@@ -38,28 +38,52 @@ namespace Mvk {
         THROW("failed to find suitable memory type!");
     }
 
-    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+    void createAllocatorVMA(Context& context) {
+        VmaVulkanFunctions vulkanFunctions {};
+        vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+        vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+        VmaAllocatorCreateInfo allocatorCreateInfo {};
+        allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+        allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_0;
+        allocatorCreateInfo.physicalDevice = context.physicalDevice;
+        allocatorCreateInfo.device = context.device;
+        allocatorCreateInfo.instance = context.instance;
+        allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+        if (vmaCreateAllocator(&allocatorCreateInfo, &context.allocatorVMA) != VK_SUCCESS) {
+            THROW("failed to create vulkan memory allocator");
+        }
+    }
+
+    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferAllocation) {
         VkBufferCreateInfo bufferInfo { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
         bufferInfo.size = size;
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(context.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-            THROW("failed to create vertex buffer!");
+        VmaAllocationCreateInfo allocInfo {};
+        allocInfo.usage = memoryUsage;
+
+        if (vmaCreateBuffer(context.allocatorVMA, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, 0) != VK_SUCCESS) {
+            THROW("failed to create buffer!");
         }
 
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(context.device, buffer, &memRequirements);
+
+        // if (vkCreateBuffer(context.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+        //     THROW("failed to create buffer!");
+        // }
+
+        // VkMemoryRequirements memRequirements;
+        // vkGetBufferMemoryRequirements(context.device, buffer, &memRequirements);
         
-        VkMemoryAllocateInfo allocInfo { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(context, memRequirements.memoryTypeBits, properties);
+        // VkMemoryAllocateInfo allocInfo { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+        // allocInfo.allocationSize = memRequirements.size;
+        // allocInfo.memoryTypeIndex = findMemoryType(context, memRequirements.memoryTypeBits, properties);
                 
-        if (vkAllocateMemory(context.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-            THROW("failed to allocate vertex buffer memory!");
-        }
-
-        vkBindBufferMemory(context.device, buffer, bufferMemory, 0);
+        // if (vkAllocateMemory(context.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+        //     THROW("failed to allocate vertex buffer memory!");
+        // }
     }
 
     VkCommandBuffer beginSingleTimeCommands(Context& context) {
@@ -106,53 +130,57 @@ namespace Mvk {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
         
         VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        VmaAllocation stagingBufferAllocation;
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
 
         void* data;
-        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            memcpy(data, vertices.data(), (size_t) bufferSize);
-        vkUnmapMemory(context.device, stagingBufferMemory);
+        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data);
+            memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
 
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, context.vertexBuffer, context.vertexBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.vertexBuffer, context.vertexBufferAllocation);
 
         copyBuffer(context, stagingBuffer, context.vertexBuffer, bufferSize);
 
-        vkDestroyBuffer(context.device, stagingBuffer, 0);
-        vkFreeMemory(context.device, stagingBufferMemory, 0);
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
     }
 
     void createIndexBuffer(Context& context) {
         VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
         VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
+        VmaAllocation stagingBufferAllocation;
 
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
         
         void* data;
-        vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t) bufferSize);
-        vkUnmapMemory(context.device, stagingBufferMemory);
+        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data);
+            memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
 
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, context.indexBuffer, context.indexBufferMemory);
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.indexBuffer, context.indexBufferAllocation);
         
         copyBuffer(context, stagingBuffer, context.indexBuffer, bufferSize);
 
-        vkDestroyBuffer(context.device, stagingBuffer, 0);
-        vkFreeMemory(context.device, stagingBufferMemory, 0);
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
     }
 
-    void createUniformBuffers(Context& context) {
+    void createUniformBuffers(Context& context, size_t count) {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        context.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        context.uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        context.uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+        context.uniformBuffers.resize(count);
+        context.uniformBuffersAllocation.resize(count);
+        context.uniformBuffersMapped.resize(count);
 
-        for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, context.uniformBuffers[i], context.uniformBuffersMemory[i]);
-            vkMapMemory(context.device, context.uniformBuffersMemory[i], 0, bufferSize, 0, &context.uniformBuffersMapped[i]);
+        for (size_t j {0}; j < count; j++) {
+            for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                context.uniformBuffers[j].resize(MAX_FRAMES_IN_FLIGHT);
+                context.uniformBuffersAllocation[j].resize(MAX_FRAMES_IN_FLIGHT);
+                context.uniformBuffersMapped[j].resize(MAX_FRAMES_IN_FLIGHT);
+
+                createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.uniformBuffers[j][i], context.uniformBuffersAllocation[j][i]);
+                vmaMapMemory(context.allocatorVMA, context.uniformBuffersAllocation[j][i], &context.uniformBuffersMapped[j][i]);
+            }
         }
     }
 }

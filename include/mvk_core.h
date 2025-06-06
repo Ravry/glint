@@ -12,6 +12,7 @@
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+#include <vk_mem_alloc.h>
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -124,7 +125,7 @@ namespace Mvk {
         VkExtent2D swapchainExtent;     
         VkRenderPass renderpass;  
         VkDescriptorPool descriptorPool;
-        std::vector<VkDescriptorSet> descriptorSets;
+        std::vector<std::vector<VkDescriptorSet>> descriptorSets;
         VkDescriptorSetLayout descriptorSetLayout;
         VkPipelineLayout pipelineLayout;
         VkPipeline pipeline;
@@ -135,14 +136,15 @@ namespace Mvk {
         std::vector<VkSemaphore> renderFinishedSemaphore;
         std::vector<VkFence> inFlightFence;
 
+        VmaAllocator allocatorVMA;
         VkBuffer vertexBuffer;
-        VkDeviceMemory vertexBufferMemory;
+        VmaAllocation vertexBufferAllocation;
         VkBuffer indexBuffer;
-        VkDeviceMemory indexBufferMemory;
+        VmaAllocation indexBufferAllocation;
 
-        std::vector<VkBuffer> uniformBuffers;
-        std::vector<VkDeviceMemory> uniformBuffersMemory;
-        std::vector<void*> uniformBuffersMapped;
+        std::vector<std::vector<VkBuffer>> uniformBuffers;
+        std::vector<std::vector<VmaAllocation>> uniformBuffersAllocation;
+        std::vector<std::vector<void*>> uniformBuffersMapped;
 
         VkImage textureImage;
         VkDeviceMemory textureImageMemory;
@@ -170,20 +172,21 @@ namespace Mvk {
             vkDestroyImage(device, textureImage, 0);
             vkFreeMemory(device, textureImageMemory, 0);
 
-            vkDestroyBuffer(device, indexBuffer, 0);
-            vkFreeMemory(device, indexBufferMemory, 0);
-
-            vkDestroyBuffer(device, vertexBuffer, 0);
-            vkFreeMemory(device, vertexBufferMemory, 0);
+            vmaDestroyBuffer(allocatorVMA, indexBuffer, indexBufferAllocation);
+            vmaDestroyBuffer(allocatorVMA, vertexBuffer, vertexBufferAllocation);
 
             vkDestroyPipeline(device, pipeline, 0);
             
             vkDestroyPipelineLayout(device, pipelineLayout, 0);
 
-            for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                vkDestroyBuffer(device, uniformBuffers[i], 0);
-                vkFreeMemory(device, uniformBuffersMemory[i], 0);
+            for (size_t j {0}; j < uniformBuffers.size(); j++) {
+                for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
+                    vmaUnmapMemory(allocatorVMA, uniformBuffersAllocation[j][i]);
+                    vmaDestroyBuffer(allocatorVMA, uniformBuffers[j][i], uniformBuffersAllocation[j][i]);
+                }
             }
+
+            vmaDestroyAllocator(allocatorVMA);
 
             vkDestroyDescriptorPool(device, descriptorPool, 0);
 
@@ -237,19 +240,21 @@ namespace Mvk {
     VkVertexInputBindingDescription getBindingDescription();
     std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
 
+    void createAllocatorVMA(Context& context);
+
     uint32_t findMemoryType(Context& context, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
     VkCommandBuffer beginSingleTimeCommands(Context& context);
     void endSingleTimeCommands(Context& context, VkCommandBuffer commandBuffer);
-    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferMemory);
     void createVertexBuffer(Context& context);
     void createIndexBuffer(Context& context);
 
-    void createUniformBuffers(Context& context);
+    void createUniformBuffers(Context& context, size_t count);
 
     void createDescriptorSetLayout(Context& context);
-    void createDescriptorPool(Context& context);
-    void allocateDescriptorSets(Context& context);
+    void createDescriptorPool(Context& context, size_t count);
+    void allocateDescriptorSets(Context& context, size_t count);
 
     void createTextureImage(Context& context, const char* imageFile);
 }

@@ -28,16 +28,8 @@ namespace Mvk {
 
     void recordCommandBuffer(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame)
     {
-        UniformBufferObject ubo {};
-
         const float hWidth = context.swapchainExtent.width / 2.f;
         const float hHeight = context.swapchainExtent.height / 2.f;
-
-        ubo.model = glm::scale(glm::translate(glm::mat4(1), glm::vec3(hWidth, hHeight, 0.f)), glm::vec3(hWidth, hHeight, 1));
-        ubo.view = glm::mat4(1);
-        ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
-
-        memcpy(context.uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
 
         VkCommandBufferBeginInfo beginInfo { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
         
@@ -78,9 +70,23 @@ namespace Mvk {
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, context.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipelineLayout, 0, 1, &context.descriptorSets[currentFrame], 0, 0);
-        
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        constexpr size_t N = 2;
+
+        for (size_t i {0}; i < N; i++) {
+            UniformBufferObject ubo {};
+            float tileWidth = hWidth / N;
+            ubo.model = glm::scale(
+                glm::translate(glm::mat4(1), glm::vec3(((i/static_cast<float>(N)) + .25f) * context.swapchainExtent.width, hHeight, 0.f)),
+                glm::vec3(tileWidth, hHeight, 1)
+            );
+            ubo.view = glm::mat4(1);
+            ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
+
+            memcpy(context.uniformBuffersMapped[i][currentFrame], &ubo, sizeof(ubo));
+
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipelineLayout, 0, 1, &context.descriptorSets[i][currentFrame], 0, 0);
+            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        }
 
         vkCmdEndRenderPass(commandBuffer);
 

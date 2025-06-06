@@ -158,23 +158,22 @@ namespace Mvk {
         }
 
         VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-        
+        VmaAllocation stagingBufferAllocation;
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
+
         void* data;
-        vkMapMemory(context.device, stagingBufferMemory, 0, imageSize, 0, &data);
+        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data); 
             memcpy(data, pixels, static_cast<size_t>(imageSize));
-        vkUnmapMemory(context.device, stagingBufferMemory);
+        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
 
         stbi_image_free(pixels);
         
-        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, context.textureImage, context.textureImageMemory);
+        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.textureImage, context.textureImageMemory);
         transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         copyBufferToImage(context, stagingBuffer, context.textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
         transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
-        vkDestroyBuffer(context.device, stagingBuffer, 0);
-        vkFreeMemory(context.device, stagingBufferMemory, 0);
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
 
         createTextureImageView(context);
 

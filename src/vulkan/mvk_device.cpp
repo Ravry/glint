@@ -1,7 +1,6 @@
 #include "mvk_core.h"
 
 namespace Mvk {
-
     void findQueueFamilies(Context& context, VkPhysicalDevice physicalDevice) {
         uint32_t queueFamilyCount {0};
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, 0);

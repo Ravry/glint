@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define VMA_IMPLEMENTATION
 #include "window.h"
 
 Window::Window(const char* title, int width, int height) {
@@ -14,7 +15,11 @@ Window::Window(const char* title, int width, int height) {
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     handle = glfwGetWin32Window(window);
 
+    MonitorDimensions monitorDimensions = getMonitorDimensions();
+    LOG(fmt::color::pink, "monitor-count: [count: {}]; monitor-dimensions: [width: {}][height: {}]\n", monitorDimensions.count, monitorDimensions.width(), monitorDimensions.height());
+
     // SetParent(handle, workerwHandle);
+    // SetWindowPos(handle, HWND_TOP, 0, 0, monitorDimensions.width(), monitorDimensions.height(), SWP_SHOWWINDOW);
 
     glfwSetWindowUserPointer(window, this);
 
@@ -27,6 +32,9 @@ Window::Window(const char* title, int width, int height) {
     Mvk::createInstance(mvkContext);
     Mvk::createSurface(mvkContext, window);
     Mvk::createDevice(mvkContext);
+
+    Mvk::createAllocatorVMA(mvkContext);
+
     Mvk::createSwapchain(mvkContext);
 
     Mvk::createDescriptorSetLayout(mvkContext);
@@ -35,15 +43,16 @@ Window::Window(const char* title, int width, int height) {
     
     Mvk::createCommandPool(mvkContext);
     Mvk::createCommandBuffer(mvkContext);
+
     
     Mvk::createVertexBuffer(mvkContext);
     Mvk::createIndexBuffer(mvkContext);
-    Mvk::createUniformBuffers(mvkContext);
+    Mvk::createUniformBuffers(mvkContext, 2);
 
     Mvk::createTextureImage(mvkContext, ASSETS_DIR "img/statue.jpg");
 
-    Mvk::createDescriptorPool(mvkContext);
-    Mvk::allocateDescriptorSets(mvkContext);
+    Mvk::createDescriptorPool(mvkContext, 2);
+    Mvk::allocateDescriptorSets(mvkContext, 2);
 
     Mvk::createFramebuffers(mvkContext);
     

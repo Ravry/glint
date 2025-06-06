@@ -22,7 +22,13 @@ FetchContent_Declare(
   GIT_TAG 1.0.1
 )
 
-FetchContent_MakeAvailable(glfw fmt glm)
+FetchContent_Declare(
+  vma
+  GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+  GIT_TAG master
+)
+
+FetchContent_MakeAvailable(glfw fmt glm vma)
 
 find_package(Vulkan REQUIRED)
 
@@ -35,6 +41,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${PROJECT_SOURCE_DIR}/include
   ${Vulkan_INCLUDE_DIRS}
   ${glm_SOURCE_DIR}
+  ${vma_SOURCE_DIR}/include
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 

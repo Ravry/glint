@@ -42,3 +42,33 @@ HWND getWorkerwWindow() {
 
     return workerwHWND;
 }
+
+MonitorDimensions getMonitorDimensions() {
+     MonitorDimensions monitorDimensions;
+
+    EnumDisplayMonitors(NULL, NULL, [](HMONITOR hMonitor, HDC, LPRECT, LPARAM lParam) -> BOOL {
+        MONITORINFOEX monitorInfo;
+        monitorInfo.cbSize = sizeof(monitorInfo);
+
+        MonitorDimensions* pMonitorDimensions = reinterpret_cast<MonitorDimensions*>(lParam);
+
+        if (GetMonitorInfo(hMonitor, &monitorInfo)) {
+            RECT rect = monitorInfo.rcMonitor;
+
+            if (rect.left < pMonitorDimensions->left)
+                pMonitorDimensions->left = rect.left;
+            if (rect.top < pMonitorDimensions->top)
+                pMonitorDimensions->top = rect.top;
+            if (rect.right > pMonitorDimensions->right)
+                pMonitorDimensions->right = rect.right;
+            if (rect.bottom > pMonitorDimensions->bottom)
+                pMonitorDimensions->bottom = rect.bottom;
+        }
+
+        pMonitorDimensions->count++;
+
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&monitorDimensions));
+
+    return monitorDimensions;
+}

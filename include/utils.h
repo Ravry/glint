@@ -9,5 +9,17 @@
 std::string readFileContents(const char* filename);
 HWND getWorkerwWindow();
 
-// SetParent(wallpaperWindow.getWindowHandle(), workerwHWND);
+struct MonitorDimensions {
+    int left = INT_MAX;
+    int top = INT_MAX;
+    int right = INT_MIN;
+    int bottom = INT_MIN;
+    int count = 0;
+
+    int width() const { return right - left; }
+    int height() const { return bottom - top; }
+};
+
+MonitorDimensions getMonitorDimensions();
+
 // SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, NULL, SPIF_SENDCHANGE);
