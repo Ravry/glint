@@ -1,39 +1,34 @@
 #include "mvk_core.h"
 
+#include "media.h"
 
 namespace Mvk {
-    void createImage(Context& context, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
-        VkImageCreateInfo imageInfo { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = static_cast<uint32_t>(width);
-        imageInfo.extent.height = static_cast<uint32_t>(height);
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = format;
-        imageInfo.tiling = tiling;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = usage;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    void createImage(Context& context, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& imageAllocation) {
+        VkImageCreateInfo imageCreateInfo { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+        imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageCreateInfo.extent.width = static_cast<uint32_t>(width);
+        imageCreateInfo.extent.height = static_cast<uint32_t>(height);
+        imageCreateInfo.extent.depth = 1;
+        imageCreateInfo.mipLevels = 1;
+        imageCreateInfo.arrayLayers = 1;
+        imageCreateInfo.format = format;
+        imageCreateInfo.tiling = tiling;
+        imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageCreateInfo.usage = usage;
+        imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
-        if (vkCreateImage(context.device, &imageInfo, 0, &context.textureImage) != VK_SUCCESS) {
+        VmaAllocationCreateInfo allocInfo {};
+        allocInfo.usage = memoryUsage;
+        
+        // ADD THIS: For CPU-accessible memory, you need the MAPPED flag
+        if (memoryUsage == VMA_MEMORY_USAGE_CPU_TO_GPU || memoryUsage == VMA_MEMORY_USAGE_CPU_ONLY) {
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+
+        if (vmaCreateImage(context.allocatorVMA, &imageCreateInfo, &allocInfo, &image, &imageAllocation, 0) != VK_SUCCESS) {
             THROW("failed to create image!");
         }
-
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(context.device, context.textureImage, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(context, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    
-        if (vkAllocateMemory(context.device, &allocInfo, 0, &context.textureImageMemory) != VK_SUCCESS) {
-            THROW("failed to allocate image memory!");
-        }
-
-        vkBindImageMemory(context.device, context.textureImage, context.textureImageMemory, 0);
     }
 
     void transitionImageLayout(Context& context, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
@@ -68,8 +63,15 @@ namespace Mvk {
 
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        } else {
-            throw std::invalid_argument("unsupported layout transition!");
+        } else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+            barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        }
+        else {
+            throw std::invalid_argument("unsupported layout transition!\n");
         }
 
 
@@ -151,26 +153,28 @@ namespace Mvk {
     void createTextureImage(Context& context, const char* imageFile) {
         int width, height, nrChannels;
         stbi_uc* pixels = stbi_load(imageFile, &width, &height, &nrChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = width * height * 4;
 
         if (!pixels) {
             THROW("failed to load texture image!");
         }
 
+        VkDeviceSize imageSize = width * height * 4;
+
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
-        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
+        VmaAllocationInfo allocInfo {};
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
 
-        void* data;
-        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data); 
-            memcpy(data, pixels, static_cast<size_t>(imageSize));
-        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
+        memcpy(allocInfo.pMappedData, pixels, static_cast<size_t>(imageSize));
 
         stbi_image_free(pixels);
         
-        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.textureImage, context.textureImageMemory);
+        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.textureImage, context.textureImageAllocation);
+        
         transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
         copyBufferToImage(context, stagingBuffer, context.textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
         transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
         vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
@@ -178,5 +182,51 @@ namespace Mvk {
         createTextureImageView(context);
 
         createTextureSampler(context);
+    }
+
+    
+    void createTexture(Context& context, const int width, const int height) { 
+        VkDeviceSize imageSize = width * height * 4;
+
+        VkBuffer stagingBuffer;
+        VmaAllocation stagingBufferAllocation;
+        VmaAllocationInfo allocInfo {};
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
+        
+        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.textureImage, context.textureImageAllocation);
+        
+        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        copyBufferToImage(context, stagingBuffer, context.textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
+
+        createTextureImageView(context);
+
+        createTextureSampler(context);
+    }
+
+    void updateTextureImageDataDynamic(Context& context, void* pixelData) {
+        const int width = 1920;
+        const int height = 1080;
+        VkDeviceSize imageSize = width * height * 4;
+
+        VkBuffer stagingBuffer;
+        VmaAllocation stagingBufferAllocation;
+        VmaAllocationInfo allocInfo {};
+
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
+       
+        memcpy(allocInfo.pMappedData, pixelData, static_cast<size_t>(imageSize));
+
+        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        copyBufferToImage(context, stagingBuffer, context.textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
     }
 }

@@ -56,34 +56,19 @@ namespace Mvk {
         }
     }
 
-    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferAllocation) {
+    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferAllocation, VmaAllocationCreateFlags allocFlags, VmaAllocationInfo* allocInfo) {
         VkBufferCreateInfo bufferInfo { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
         bufferInfo.size = size;
         bufferInfo.usage = usage;
         bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        VmaAllocationCreateInfo allocInfo {};
-        allocInfo.usage = memoryUsage;
+        VmaAllocationCreateInfo allocCreateInfo {};
+        allocCreateInfo.usage = memoryUsage;
+        allocCreateInfo.flags = allocFlags;
 
-        if (vmaCreateBuffer(context.allocatorVMA, &bufferInfo, &allocInfo, &buffer, &bufferAllocation, 0) != VK_SUCCESS) {
+        if (vmaCreateBuffer(context.allocatorVMA, &bufferInfo, &allocCreateInfo, &buffer, &bufferAllocation, allocInfo) != VK_SUCCESS) {
             THROW("failed to create buffer!");
         }
-
-
-        // if (vkCreateBuffer(context.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-        //     THROW("failed to create buffer!");
-        // }
-
-        // VkMemoryRequirements memRequirements;
-        // vkGetBufferMemoryRequirements(context.device, buffer, &memRequirements);
-        
-        // VkMemoryAllocateInfo allocInfo { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-        // allocInfo.allocationSize = memRequirements.size;
-        // allocInfo.memoryTypeIndex = findMemoryType(context, memRequirements.memoryTypeBits, properties);
-                
-        // if (vkAllocateMemory(context.device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-        //     THROW("failed to allocate vertex buffer memory!");
-        // }
     }
 
     VkCommandBuffer beginSingleTimeCommands(Context& context) {
@@ -131,14 +116,13 @@ namespace Mvk {
         
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
 
-        void* data;
-        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data);
-            memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
+        VmaAllocationInfo allocInfo {};
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
 
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.vertexBuffer, context.vertexBufferAllocation);
+        memcpy(allocInfo.pMappedData, vertices.data(), static_cast<size_t>(bufferSize));
+
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.vertexBuffer, context.vertexBufferAllocation, 0, 0);
 
         copyBuffer(context, stagingBuffer, context.vertexBuffer, bufferSize);
 
@@ -151,14 +135,12 @@ namespace Mvk {
         VkBuffer stagingBuffer;
         VmaAllocation stagingBufferAllocation;
 
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation);
+        VmaAllocationInfo allocInfo {};
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
         
-        void* data;
-        vmaMapMemory(context.allocatorVMA, stagingBufferAllocation, &data);
-            memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-        vmaUnmapMemory(context.allocatorVMA, stagingBufferAllocation);
-
-        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.indexBuffer, context.indexBufferAllocation);
+        memcpy(allocInfo.pMappedData, indices.data(), static_cast<size_t>(bufferSize));
+        
+        createBuffer(context, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.indexBuffer, context.indexBufferAllocation, 0, 0);
         
         copyBuffer(context, stagingBuffer, context.indexBuffer, bufferSize);
 
@@ -177,9 +159,11 @@ namespace Mvk {
                 context.uniformBuffers[j].resize(MAX_FRAMES_IN_FLIGHT);
                 context.uniformBuffersAllocation[j].resize(MAX_FRAMES_IN_FLIGHT);
                 context.uniformBuffersMapped[j].resize(MAX_FRAMES_IN_FLIGHT);
+                
+                VmaAllocationInfo allocInfo {};
 
-                createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.uniformBuffers[j][i], context.uniformBuffersAllocation[j][i]);
-                vmaMapMemory(context.allocatorVMA, context.uniformBuffersAllocation[j][i], &context.uniformBuffersMapped[j][i]);
+                createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.uniformBuffers[j][i], context.uniformBuffersAllocation[j][i], VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
+                context.uniformBuffersMapped[j][i] = allocInfo.pMappedData;
             }
         }
     }

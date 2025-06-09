@@ -17,6 +17,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <stb_image.h>
+#include "media.h"
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
@@ -147,7 +148,7 @@ namespace Mvk {
         std::vector<std::vector<void*>> uniformBuffersMapped;
 
         VkImage textureImage;
-        VkDeviceMemory textureImageMemory;
+        VmaAllocation textureImageAllocation;
         VkImageView textureImageView;
         VkSampler textureImageSampler;
 
@@ -164,13 +165,11 @@ namespace Mvk {
                 vkDestroyFramebuffer(device, swapchainFramebuffer, 0);
             }
             
-
             vkDestroySampler(device, textureImageSampler, 0);
 
             vkDestroyImageView(device, textureImageView, 0);
 
-            vkDestroyImage(device, textureImage, 0);
-            vkFreeMemory(device, textureImageMemory, 0);
+            vmaDestroyImage(allocatorVMA, textureImage, textureImageAllocation);
 
             vmaDestroyBuffer(allocatorVMA, indexBuffer, indexBufferAllocation);
             vmaDestroyBuffer(allocatorVMA, vertexBuffer, vertexBufferAllocation);
@@ -181,7 +180,6 @@ namespace Mvk {
 
             for (size_t j {0}; j < uniformBuffers.size(); j++) {
                 for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                    vmaUnmapMemory(allocatorVMA, uniformBuffersAllocation[j][i]);
                     vmaDestroyBuffer(allocatorVMA, uniformBuffers[j][i], uniformBuffersAllocation[j][i]);
                 }
             }
@@ -233,7 +231,7 @@ namespace Mvk {
     void createCommandPool(Context& context);
 
     void createCommandBuffer(Context& context);
-    void recordCommandBuffer(Context& context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
+    void recordCommandBuffer(Context& context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, uint32_t realFrame);
 
     void createSyncObjects(Context& context);
 
@@ -246,7 +244,7 @@ namespace Mvk {
 
     VkCommandBuffer beginSingleTimeCommands(Context& context);
     void endSingleTimeCommands(Context& context, VkCommandBuffer commandBuffer);
-    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferMemory);
+    void createBuffer(Context& context, VkDeviceSize size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VkBuffer& buffer, VmaAllocation& bufferMemory, VmaAllocationCreateFlags allocFlags, VmaAllocationInfo* allocInfo);
     void createVertexBuffer(Context& context);
     void createIndexBuffer(Context& context);
 
@@ -257,4 +255,6 @@ namespace Mvk {
     void allocateDescriptorSets(Context& context, size_t count);
 
     void createTextureImage(Context& context, const char* imageFile);
+    void createTexture(Context& context, const int width, const int height); 
+    void updateTextureImageDataDynamic(Context& context, void* pixelData);
 }

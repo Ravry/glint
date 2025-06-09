@@ -30,6 +30,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glfw fmt glm vma)
 
+set(FFMPEG_DIR "${CMAKE_BINARY_DIR}/_deps/ffmpeg")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -g")
+
 find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -42,12 +46,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${Vulkan_INCLUDE_DIRS}
   ${glm_SOURCE_DIR}
   ${vma_SOURCE_DIR}/include
+  ${FFMPEG_DIR}/include
+)
+
+target_link_directories(${PROJECT_NAME} PRIVATE
+  ${FFMPEG_DIR}/lib
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
   glfw
   fmt::fmt
   Vulkan::Vulkan
+  avcodec.lib
+  avformat.lib
+  avutil.lib
+  swscale.lib
+  swresample.lib
 )
 
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

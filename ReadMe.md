@@ -4,10 +4,12 @@ A (more or less) high-performance animated wallpaper application built using mod
 
 ## 🛠️ Technologies Used
 
+- [fmt](https://github.com/fmtlib/fmt) – Fast, safe formatting library used for structured logging and debug output
 - [Vulkan SDK](https://vulkan.lunarg.com/) – Low-level graphics API for high-performance rendering
+- [Vulkan Memory Allocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) – manages memory allocations and resource creation
 - [GLFW](https://www.glfw.org/) – Window creation and input handling
 - [GLM](https://github.com/g-truc/glm) – Header-only C++ mathematics library for graphics software
-- [fmt](https://github.com/fmtlib/fmt) – Fast, safe formatting library used for structured logging and debug output
+- [FFMPEG](https://ffmpeg.org/) – handling video, audio, and other multimedia files and streams
 
 ## 🚧 Status
 

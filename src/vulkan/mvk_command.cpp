@@ -1,6 +1,5 @@
 #include "mvk_core.h"
 
-
 namespace Mvk {
     void createCommandPool(Context& context) {
         VkCommandPoolCreateInfo commandPoolInfo { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
@@ -26,7 +25,9 @@ namespace Mvk {
         }
     }
 
-    void recordCommandBuffer(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame)
+    FrameData frameData {}; 
+
+    void recordCommandBuffer(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, uint32_t realFrame)
     {
         const float hWidth = context.swapchainExtent.width / 2.f;
         const float hHeight = context.swapchainExtent.height / 2.f;
@@ -63,6 +64,23 @@ namespace Mvk {
         scissor.offset = {0, 0};
         scissor.extent = context.swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        //note to myself: important otherwise memory leak
+        if (frameData.pixels) 
+            delete[] frameData.pixels;
+
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            if (frameQueue.size() > 0) {
+                frameData = frameQueue.front();
+                frameQueue.pop();
+                updateTextureImageDataDynamic(context, frameData.pixels);
+                // LOG(fmt::color::lime, "consumer received frame data (from producer) - size: {}\n", frameQueue.size());                
+            }
+            if (frameQueue.size() < 5) {
+                frameCond.notify_one();
+            }
+        }
 
         VkBuffer vertexBuffers[] { context.vertexBuffer };
         VkDeviceSize offsets[] = { 0 };

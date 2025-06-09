@@ -10,6 +10,7 @@ Window::Window(const char* title, int width, int height) {
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    // glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     // glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
@@ -43,13 +44,13 @@ Window::Window(const char* title, int width, int height) {
     
     Mvk::createCommandPool(mvkContext);
     Mvk::createCommandBuffer(mvkContext);
-
     
     Mvk::createVertexBuffer(mvkContext);
     Mvk::createIndexBuffer(mvkContext);
     Mvk::createUniformBuffers(mvkContext, 2);
 
-    Mvk::createTextureImage(mvkContext, ASSETS_DIR "img/statue.jpg");
+    // Mvk::createTextureImage(mvkContext, ASSETS_DIR "img/statue.jpg");
+    Mvk::createTexture(mvkContext, 1920, 1080);
 
     Mvk::createDescriptorPool(mvkContext, 2);
     Mvk::allocateDescriptorSets(mvkContext, 2);
@@ -63,6 +64,7 @@ void Window::run() {
     double lastTime = glfwGetTime();
 
     uint32_t currentFrame {0};
+    uint32_t realFrame {0};
 
     LOG(fmt::color::brown, "----------------------------------------\n");
     LOG(fmt::color::brown, "            loop-started\n");
@@ -93,7 +95,7 @@ void Window::run() {
 
         vkResetCommandBuffer(mvkContext.commandBuffer[currentFrame], 0);
 
-        Mvk::recordCommandBuffer(mvkContext, mvkContext.commandBuffer[currentFrame], imageIndex, currentFrame);
+        Mvk::recordCommandBuffer(mvkContext, mvkContext.commandBuffer[currentFrame], imageIndex, currentFrame, realFrame);
         
         VkSemaphore waitSemaphores[] = { mvkContext.imageAvailableSemaphore[currentFrame] };
         VkSemaphore signalSemaphores[] = { mvkContext.renderFinishedSemaphore[currentFrame] };
@@ -130,7 +132,7 @@ void Window::run() {
             THROW("failed to present swap chain image!\n");
         }
 
-        const double targetFPS = 60.;
+        const double targetFPS = 30.;
         const double targetHz = 1. / targetFPS;
         double frameEndTime = glfwGetTime();
         double actualHz = frameEndTime - currentTime;
@@ -141,12 +143,15 @@ void Window::run() {
         }
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        realFrame = (realFrame + 1) % static_cast<int>(40);
     }
 
     
     LOG(fmt::color::brown, "----------------------------------------\n");
     LOG(fmt::color::brown, "            loop-ended\n");
     LOG(fmt::color::brown, "----------------------------------------\n");
+    
+    windowClosed = true;
 }
 
 Window::~Window() {
