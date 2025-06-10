@@ -1,7 +1,5 @@
 #include "mvk_core.h"
 
-#include "media.h"
-
 namespace Mvk {
     void createImage(Context& context, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VmaMemoryUsage memoryUsage, VkImage& image, VmaAllocation& imageAllocation) {
         VkImageCreateInfo imageCreateInfo { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -123,7 +121,7 @@ namespace Mvk {
         createImageView(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, context.textureImageView);
     }
 
-    void createTextureSampler(Context& context) {
+    void createTextureSampler(Context& context, VkSampler& sampler) {
         VkPhysicalDeviceProperties properties{};
         vkGetPhysicalDeviceProperties(context.physicalDevice, &properties);
 
@@ -145,7 +143,7 @@ namespace Mvk {
         samplerInfo.minLod = 0.0f;
         samplerInfo.maxLod = 0.0f;
         
-        if (vkCreateSampler(context.device, &samplerInfo, 0, &context.textureImageSampler) != VK_SUCCESS) {
+        if (vkCreateSampler(context.device, &samplerInfo, 0, &sampler) != VK_SUCCESS) {
             THROW("failed to create texture sampler!");
         }
     }
@@ -181,7 +179,34 @@ namespace Mvk {
 
         createTextureImageView(context);
 
-        createTextureSampler(context);
+        createTextureSampler(context, context.textureImageSampler);
+    }
+
+    void createTextureFromData(Context& context, VkImage& image, VmaAllocation& allocation, VkImageView& imageView, VkSampler& sampler, uint8_t* pixels, int width, int height) {
+        VkDeviceSize imageSize = width * height * 4;
+
+        VkBuffer stagingBuffer;
+        VmaAllocation stagingBufferAllocation;
+        VmaAllocationInfo allocInfo {};
+        createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
+
+        memcpy(allocInfo.pMappedData, pixels, static_cast<size_t>(imageSize));
+
+        delete[] pixels;
+        
+        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
+        
+        transitionImageLayout(context, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        copyBufferToImage(context, stagingBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+        transitionImageLayout(context, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+        vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
+
+        createImageView(context, image, VK_FORMAT_R8G8B8A8_SRGB, imageView);
+
+        createTextureSampler(context, sampler);
     }
 
     
@@ -205,10 +230,10 @@ namespace Mvk {
 
         createTextureImageView(context);
 
-        createTextureSampler(context);
+        createTextureSampler(context, context.textureImageSampler);
     }
 
-    void updateTextureImageDataDynamic(Context& context, void* pixelData) {
+    void updateTextureImageDataDynamic(Context& context, void*& pixelData) {
         const int width = 1920;
         const int height = 1080;
         VkDeviceSize imageSize = width * height * 4;
@@ -218,8 +243,12 @@ namespace Mvk {
         VmaAllocationInfo allocInfo {};
 
         createBuffer(context, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU, stagingBuffer, stagingBufferAllocation, VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
-       
-        memcpy(allocInfo.pMappedData, pixelData, static_cast<size_t>(imageSize));
+        
+        {
+            std::lock_guard<std::mutex> lock(frameDataMutex);
+            if (pixelData != nullptr)
+                memcpy(allocInfo.pMappedData, pixelData, static_cast<size_t>(imageSize));
+        }
 
         transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 

@@ -148,23 +148,26 @@ namespace Mvk {
     }
 
     void createUniformBuffers(Context& context, size_t count) {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+        VkDeviceSize minAlignment = context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+        VkDeviceSize alignedSize = sizeof(UniformBufferObject);
+        if (minAlignment > 0) {
+            alignedSize = (alignedSize + minAlignment - 1) & ~(minAlignment - 1);
+        }
 
-        context.uniformBuffers.resize(count);
-        context.uniformBuffersAllocation.resize(count);
-        context.uniformBuffersMapped.resize(count);
+        VkDeviceSize bufferSize = count * alignedSize;
 
-        for (size_t j {0}; j < count; j++) {
-            for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
-                context.uniformBuffers[j].resize(MAX_FRAMES_IN_FLIGHT);
-                context.uniformBuffersAllocation[j].resize(MAX_FRAMES_IN_FLIGHT);
-                context.uniformBuffersMapped[j].resize(MAX_FRAMES_IN_FLIGHT);
-                
-                VmaAllocationInfo allocInfo {};
+        context.uniformBuffers.resize(1);
+        context.uniformBuffersAllocation.resize(1);
+        context.uniformBuffersMapped.resize(1);
 
-                createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.uniformBuffers[j][i], context.uniformBuffersAllocation[j][i], VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
-                context.uniformBuffersMapped[j][i] = allocInfo.pMappedData;
-            }
+        for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            context.uniformBuffers[0].resize(MAX_FRAMES_IN_FLIGHT);
+            context.uniformBuffersAllocation[0].resize(MAX_FRAMES_IN_FLIGHT);
+            context.uniformBuffersMapped[0].resize(MAX_FRAMES_IN_FLIGHT);
+            
+            VmaAllocationInfo allocInfo {};
+            createBuffer(context, bufferSize,  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_ONLY, context.uniformBuffers[0][i], context.uniformBuffersAllocation[0][i], VMA_ALLOCATION_CREATE_MAPPED_BIT, &allocInfo);
+            context.uniformBuffersMapped[0][i] = allocInfo.pMappedData;
         }
     }
 }

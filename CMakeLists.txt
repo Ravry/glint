@@ -32,8 +32,6 @@ FetchContent_MakeAvailable(glfw fmt glm vma)
 
 set(FFMPEG_DIR "${CMAKE_BINARY_DIR}/_deps/ffmpeg")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -g")
-
 find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")

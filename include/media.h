@@ -29,9 +29,12 @@ struct FrameData {
     void* pixels {nullptr};
 };
 
-inline std::mutex mtx;
+inline std::mutex frameDataMutex;
+inline std::mutex frameQueueMutex;
 inline std::queue<FrameData> frameQueue;
 inline std::condition_variable frameCond;
 constexpr size_t MAX_QUEUE_SIZE = 20;
 
 void media_func(const char* filename);
+
+uint8_t* getMediaThumbnail(const char* filename);

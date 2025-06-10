@@ -5,10 +5,13 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include "imgui.h"
 
-std::string readFileContents(const char* filename);
+void SetupImGuiStyle();
+
 HWND getWorkerwWindow();
 
+std::string readFileContents(const char* filename);
 struct MonitorDimensions {
     int left = INT_MAX;
     int top = INT_MAX;

@@ -18,6 +18,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stb_image.h>
 #include "media.h"
+#include "imgui_self.h"
+
+
+inline constexpr size_t N = 2;
+
+inline HWND desktop {GetShellWindow()};
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
@@ -115,17 +121,20 @@ namespace Mvk {
         VkInstance instance;
         QueueFamilyIndices queueFamilyIndices;
         VkPhysicalDevice physicalDevice;
+        VkPhysicalDeviceProperties physicalDeviceProperties;
         VkDevice device;
         VkQueue graphicsQueue;
         VkQueue presentQueue;
         VkSurfaceKHR surface;
         VkSwapchainKHR swapchain;
+        SwapChainSupportDetails swapchainDetails;
         std::vector<VkImage> swapchainImages;
         std::vector<VkImageView> swapchainImageViews;
         VkFormat swapchainImageFormat;
         VkExtent2D swapchainExtent;     
         VkRenderPass renderpass;  
         VkDescriptorPool descriptorPool;
+        VkDescriptorPool imguiDescriptorPool;
         std::vector<std::vector<VkDescriptorSet>> descriptorSets;
         VkDescriptorSetLayout descriptorSetLayout;
         VkPipelineLayout pipelineLayout;
@@ -151,7 +160,7 @@ namespace Mvk {
         VmaAllocation textureImageAllocation;
         VkImageView textureImageView;
         VkSampler textureImageSampler;
-
+        
         void destroy() {   
             for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
                 vkDestroyFence(device, inFlightFence[i], 0);
@@ -186,6 +195,7 @@ namespace Mvk {
 
             vmaDestroyAllocator(allocatorVMA);
 
+            vkDestroyDescriptorPool(device, imguiDescriptorPool, 0);
             vkDestroyDescriptorPool(device, descriptorPool, 0);
 
             vkDestroyDescriptorSetLayout(device, descriptorSetLayout, 0);
@@ -231,7 +241,7 @@ namespace Mvk {
     void createCommandPool(Context& context);
 
     void createCommandBuffer(Context& context);
-    void recordCommandBuffer(Context& context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, uint32_t realFrame);
+    void recordCommandBuffer(Context& context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
 
     void createSyncObjects(Context& context);
 
@@ -251,10 +261,14 @@ namespace Mvk {
     void createUniformBuffers(Context& context, size_t count);
 
     void createDescriptorSetLayout(Context& context);
-    void createDescriptorPool(Context& context, size_t count);
-    void allocateDescriptorSets(Context& context, size_t count);
+    void createDescriptorPool(Context& context);
+    void allocateDescriptorSets(Context& context);
+    VkDescriptorSet allocateDescriptorSetsUtil(Context& context);
+    
+    void createDescriptorPoolImGUI(Context& context);
 
     void createTextureImage(Context& context, const char* imageFile);
     void createTexture(Context& context, const int width, const int height); 
-    void updateTextureImageDataDynamic(Context& context, void* pixelData);
+    void updateTextureImageDataDynamic(Context& context, void*& pixelData);
+    void createTextureFromData(Context& context, VkImage& image, VmaAllocation& allocation, VkImageView& imageView, VkSampler& sampler, uint8_t* pixels, int width, int height);
 }

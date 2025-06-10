@@ -47,6 +47,7 @@ namespace Mvk {
     bool isPhysicalDeviceSuitable(const VkPhysicalDevice& physicalDevice, Context& context) {
         VkPhysicalDeviceProperties physicalDeviceProperties;
         vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+        context.physicalDeviceProperties = physicalDeviceProperties;
 
         VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);

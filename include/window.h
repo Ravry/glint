@@ -4,29 +4,27 @@
 #include "mvk_core.h"
 #include "utils.h"
 
-class Window {
-private:
-    GLFWwindow* window;
-    HWND handle;
+namespace Glint {
+    enum WindowType {
+        WINDOW_DEFAULT_TYPE,  
+        WINDOW_WALLPAPER_TYPE
+    };
+    
+    struct WindowContext {
+        WindowType type;
+        GLFWwindow* window;
+        HWND handle;
+        Mvk::Context mvkContext {};
+        bool resized {false};
+    };
 
-    Mvk::Context mvkContext {};
-public:
-    bool resized {false};
+    struct WindowCreateInfo {
+        WindowType type;
+        const char* title;
+        int width;
+        int height;
+    };
 
-    Window(const char* title, int width, int height);
-    ~Window();
-
-    Window(const Window &) = delete;
-    Window &operator=(const Window&) = delete;
-
-    void run();
-
-    #pragma region Getters
-    GLFWwindow* getWindowGLFW() {
-        return window;
-    }
-    HWND getWindowHandle() {
-        return handle;
-    }
-    #pragma endregion Getters
-};
+    void createWindow(WindowContext& windowContext, WindowCreateInfo& windowCreateInfo);
+    void runWindow(WindowContext& windowContext);
+}

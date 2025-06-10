@@ -1,7 +1,7 @@
 #include "media.h"
 
 void media_func(const char* filename) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     av_log_set_level(AV_LOG_QUIET);
 
@@ -54,8 +54,6 @@ void media_func(const char* filename) {
 
 
         while (!windowClosed) {
-            auto startTime = std::chrono::system_clock::now();
-
             if (frameQueue.size() > MAX_QUEUE_SIZE * 0.9) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
@@ -85,15 +83,11 @@ void media_func(const char* filename) {
                         memcpy(frameData.pixels, scaled_data[0], width * height * 4);
                         
                         {
-                            std::unique_lock<std::mutex> lock(mtx);        
+                            std::unique_lock<std::mutex> lock(frameQueueMutex);        
                             frameCond.wait(lock, [] { return frameQueue.size() < MAX_QUEUE_SIZE; });
                             frameQueue.push(frameData);
                         }
-
-                        
-                        auto endTime = std::chrono::system_clock::now();
-                        LOG(fmt::color::crimson, "duration: {}ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count());
-                                    
+            
                         // LOG(fmt::color::blanched_almond, "received frame from decoder: width={}; height={} | format={} | frames={}\n", frame->width, frame->height, frame->format, frameQueue.size());
                     }
                 }
@@ -111,4 +105,88 @@ void media_func(const char* filename) {
     sws_freeContext(swsCtx);
     avcodec_free_context(&codecCtx);
     avformat_close_input(&fmtCtx);
+}
+
+uint8_t* getMediaThumbnail(const char* filename) {
+    AVFormatContext* _formatCtx = nullptr;
+    if (avformat_open_input(&_formatCtx, filename, nullptr, nullptr) < 0)
+        THROW("Failed to open input file");
+    if (avformat_find_stream_info(_formatCtx, nullptr) < 0)
+        THROW("Failed to find stream info");
+
+    int videoStreamIndex = -1;
+    AVStream* videoStream = nullptr;
+    for (unsigned int i = 0; i < _formatCtx->nb_streams; i++) {
+        if (_formatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            videoStream = _formatCtx->streams[i];
+            videoStreamIndex = i;
+            break;
+        }
+    }
+    if (!videoStream) {
+        avformat_close_input(&_formatCtx);
+        THROW("No video stream found");
+    }
+
+    const AVCodec* codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    if (!codec) {
+        avformat_close_input(&_formatCtx);
+        THROW("Failed to find decoder");
+    }
+
+    AVCodecContext* _codecCtx = avcodec_alloc_context3(codec);
+    avcodec_parameters_to_context(_codecCtx, videoStream->codecpar);
+    if (avcodec_open2(_codecCtx, codec, nullptr) < 0) {
+        avcodec_free_context(&_codecCtx);
+        avformat_close_input(&_formatCtx);
+        THROW("Failed to open codec");
+    }
+
+    AVPacket* packet = av_packet_alloc();
+    AVFrame* frame = av_frame_alloc();
+    AVFrame* rgbFrame = av_frame_alloc();
+
+    int width = _codecCtx->width;
+    int height = _codecCtx->height;
+
+    int dstWidth = 320;
+    int dstHeight = 180;
+
+    struct SwsContext* _swsCtx = sws_getContext(width, height, _codecCtx->pix_fmt,
+                                               dstWidth, dstHeight, AV_PIX_FMT_RGBA,
+                                               SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+    uint8_t* buffer = nullptr;
+    int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGBA, dstWidth, dstHeight, 1);
+    buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
+    av_image_fill_arrays(rgbFrame->data, rgbFrame->linesize, buffer, AV_PIX_FMT_RGBA, dstWidth, dstHeight, 1);
+
+    uint8_t* thumbnail = nullptr;
+
+    while (av_read_frame(_formatCtx, packet) >= 0) {
+        if (packet->stream_index == videoStreamIndex) {
+            if (avcodec_send_packet(_codecCtx, packet) == 0) {
+                if (avcodec_receive_frame(_codecCtx, frame) == 0) {
+                    sws_scale(_swsCtx, frame->data, frame->linesize, 0, height, rgbFrame->data, rgbFrame->linesize);
+
+                    thumbnail = (uint8_t*)malloc(numBytes);
+                    memcpy(thumbnail, rgbFrame->data[0], numBytes);
+                    av_packet_unref(packet);
+                    break;
+                }
+            }
+        }
+        av_packet_unref(packet);
+    }
+
+    av_frame_free(&frame);
+    av_frame_free(&rgbFrame);
+    av_packet_free(&packet);
+    sws_freeContext(_swsCtx);
+    avcodec_free_context(&_codecCtx);
+    avformat_close_input(&_formatCtx);
+
+    if (!thumbnail) THROW("Failed to decode a frame");
+
+    return thumbnail;
 }

@@ -25,18 +25,15 @@ namespace Mvk {
         }
     }
 
-    FrameData frameData {}; 
-
-    void recordCommandBuffer(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, uint32_t realFrame)
-    {
+    FrameData frameData {};
+    void recordCommandBuffer(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame)
+    {        
         const float hWidth = context.swapchainExtent.width / 2.f;
         const float hHeight = context.swapchainExtent.height / 2.f;
 
         VkCommandBufferBeginInfo beginInfo { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
         
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-            THROW("failed to begin recording command buffer!");
-        }
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) THROW("failed to begin recording command buffer!");
 
         VkRenderPassBeginInfo renderpassInfo { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
         renderpassInfo.renderPass = context.renderpass;
@@ -48,7 +45,7 @@ namespace Mvk {
         renderpassInfo.pClearValues = &clearColor;
         
         vkCmdBeginRenderPass(commandBuffer, &renderpassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    
+
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline);
 
         VkViewport viewport {};
@@ -65,17 +62,27 @@ namespace Mvk {
         scissor.extent = context.swapchainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        //note to myself: important otherwise memory leak
-        if (frameData.pixels) 
-            delete[] frameData.pixels;
-
         {
-            std::unique_lock<std::mutex> lock(mtx);
-            if (frameQueue.size() > 0) {
-                frameData = frameQueue.front();
-                frameQueue.pop();
-                updateTextureImageDataDynamic(context, frameData.pixels);
-                // LOG(fmt::color::lime, "consumer received frame data (from producer) - size: {}\n", frameQueue.size());                
+            //note to myself: important otherwise memory leak
+            {
+                std::lock_guard<std::mutex> lock(frameDataMutex);
+                if (frameData.pixels) {
+                    delete[] static_cast<uint8_t*>(frameData.pixels);
+                    frameData.pixels = nullptr;
+                }
+            }
+                
+            {
+                std::unique_lock<std::mutex> lock(frameQueueMutex);
+                if (frameQueue.size() > 0) {
+                    {
+                        std::lock_guard<std::mutex> lock(frameDataMutex);
+                        frameData = frameQueue.front();
+                        frameQueue.pop();
+                    }
+                    // updateTextureImageDataDynamic(context, frameData.pixels);
+                    // LOG(fmt::color::lime, "consumer received frame data (from producer) - size: {}\n", frameQueue.size());                
+                }   
             }
             if (frameQueue.size() < 5) {
                 frameCond.notify_one();
@@ -87,9 +94,12 @@ namespace Mvk {
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, context.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-        constexpr size_t N = 2;
-
+        
+        VkDeviceSize alignment = context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+        VkDeviceSize alignedSize = sizeof(UniformBufferObject);
+        if (alignment > 0) alignedSize = (alignedSize + alignment - 1) & ~(alignment - 1);
+        
+        uint8_t* destination = reinterpret_cast<uint8_t*>(context.uniformBuffersMapped[0][currentFrame]);
         for (size_t i {0}; i < N; i++) {
             UniformBufferObject ubo {};
             float tileWidth = hWidth / N;
@@ -100,17 +110,116 @@ namespace Mvk {
             ubo.view = glm::mat4(1);
             ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
 
-            memcpy(context.uniformBuffersMapped[i][currentFrame], &ubo, sizeof(ubo));
-
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipelineLayout, 0, 1, &context.descriptorSets[i][currentFrame], 0, 0);
-            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+            memcpy(destination + i * alignedSize, &ubo, sizeof(UniformBufferObject));
         }
+
+        // for (size_t i {0}; i < N; i++) {
+        //     uint32_t dynamicOffset = i * alignedSize;
+        //     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipelineLayout, 0, 1, &context.descriptorSets[0][currentFrame], 1, &dynamicOffset);
+        //     vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        // }
+        
+
+
+
+
+        {
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+            
+            static bool firstFrame = true;
+            if (firstFrame) {
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(context.swapchainExtent.width, context.swapchainExtent.height));
+                firstFrame = false;
+            }
+
+            ImGuiWindowFlags flags =
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoCollapse |
+                ImGuiWindowFlags_NoBringToFrontOnFocus |
+                ImGuiWindowFlags_NoNavFocus |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoTitleBar;
+
+            ImGui::Begin("Wallpaper Selector", nullptr, flags);
+
+            const float titleBarHeight = 30.0f;
+            const ImVec2 windowPos = ImGui::GetWindowPos();
+            const ImVec2 windowSize = ImGui::GetWindowSize();
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 titleBarMin = windowPos;
+            ImVec2 titleBarMax = ImVec2(windowPos.x + windowSize.x, windowPos.y + titleBarHeight);
+            drawList->AddRectFilled(titleBarMin, titleBarMax, IM_COL32(60, 60, 60, 255));
+
+            static bool dragging = false;
+            static ImVec2 dragOffset;
+
+            ImVec2 dragZoneSize = ImVec2(windowSize.x - titleBarHeight, titleBarHeight);
+            ImGui::InvisibleButton("drag_zone", dragZoneSize);
+
+            if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
+                dragging = true;
+                double cursorX, cursorY;
+                glfwGetCursorPos(context.window, &cursorX, &cursorY);
+                dragOffset = ImVec2((float)cursorX, (float)cursorY);
+            }
+
+            if (dragging && ImGui::IsMouseDown(0)) {
+                double cursorX, cursorY;
+                glfwGetCursorPos(context.window, &cursorX, &cursorY);
+
+                int winX, winY;
+                glfwGetWindowPos(context.window, &winX, &winY);
+
+                int newX = winX + static_cast<int>(cursorX - dragOffset.x);
+                int newY = winY + static_cast<int>(cursorY - dragOffset.y);
+
+                glfwSetWindowPos(context.window, newX, newY);
+            }
+
+            if (!ImGui::IsMouseDown(0)) {
+                dragging = false;
+            }
+
+            ImGui::SetCursorPos(ImVec2(10, (titleBarHeight - ImGui::GetTextLineHeight()) * 0.5f));
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Wallpaper Selector");
+
+            ImGui::SetCursorPos(ImVec2(windowSize.x - titleBarHeight, 0));
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 0.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+
+            if (ImGui::Button("X", ImVec2(titleBarHeight, titleBarHeight))) {
+                glfwSetWindowShouldClose(context.window, GLFW_TRUE);
+            }
+
+            ImGui::PopStyleColor(3);
+
+            ImGui::SetCursorPos(ImVec2(0, titleBarHeight));
+
+            std::string strFPS = "FPS: " + std::to_string(1. / context.deltaTime);
+            ImGui::Text(strFPS.c_str());
+
+            renderThumbnailGrid();
+
+            ImGui::End();
+
+            ImGui::Render();
+            ImDrawData* draw_data = ImGui::GetDrawData();
+            ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+        }
+
+
+
+
+
 
         vkCmdEndRenderPass(commandBuffer);
 
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            THROW("failed to record command buffer!");
-        }
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) THROW("failed to record command buffer!");
     }
 
     void createSyncObjects(Context& context) {

@@ -42,6 +42,8 @@ namespace Mvk {
         SwapChainSupportDetails details;
         querySwapChainSupport(context.physicalDevice, context, details);
 
+        context.swapchainDetails = details;
+
         VkSurfaceFormatKHR surfaceFormat = chooseSwapchainSurfaceFormat(details.formats);
         VkPresentModeKHR presentMode = chooseSwapPresentMode(details.presentModes);
         VkExtent2D extent = chooseSwapExtent(context, details.capabilites);
