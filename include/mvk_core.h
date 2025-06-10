@@ -20,7 +20,6 @@
 #include "media.h"
 #include "imgui_self.h"
 
-
 inline constexpr size_t N = 2;
 
 inline HWND desktop {GetShellWindow()};
@@ -261,10 +260,15 @@ namespace Mvk {
     void createUniformBuffers(Context& context, size_t count);
 
     void createDescriptorSetLayout(Context& context);
-    void createDescriptorPool(Context& context);
-    void allocateDescriptorSets(Context& context);
-    VkDescriptorSet allocateDescriptorSetsUtil(Context& context);
     
+    void createDescriptorPool(Context& context);
+
+    void allocateDescriptorSets(Context& context);
+
+    void createDescriptorPoolUtil(Context& context, VkDescriptorPool& descriptorPool);
+    void createDescriptorSetLayoutUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout);
+    std::vector<VkDescriptorSet> allocateDescriptorSetsUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorPool& descriptorPool, std::vector<VkImageView>& imageViews, std::vector<VkSampler>& samplers);
+
     void createDescriptorPoolImGUI(Context& context);
 
     void createTextureImage(Context& context, const char* imageFile);

@@ -157,7 +157,7 @@ namespace Mvk {
             static bool dragging = false;
             static ImVec2 dragOffset;
 
-            ImVec2 dragZoneSize = ImVec2(windowSize.x - titleBarHeight, titleBarHeight);
+            ImVec2 dragZoneSize = ImVec2(windowSize.x - titleBarHeight * 2, titleBarHeight);
             ImGui::InvisibleButton("drag_zone", dragZoneSize);
 
             if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
@@ -194,6 +194,17 @@ namespace Mvk {
 
             if (ImGui::Button("X", ImVec2(titleBarHeight, titleBarHeight))) {
                 glfwSetWindowShouldClose(context.window, GLFW_TRUE);
+            }
+            
+            ImGui::PopStyleColor(2);
+            
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.3f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.7f, 0.7f, 1.0f));
+
+            ImGui::SetCursorPos(ImVec2(windowSize.x - titleBarHeight * 2, 0));
+
+            if (ImGui::Button("-", ImVec2(titleBarHeight, titleBarHeight))) {
+                glfwIconifyWindow(context.window);
             }
 
             ImGui::PopStyleColor(3);

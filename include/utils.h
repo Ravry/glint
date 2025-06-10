@@ -4,14 +4,17 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <vector>
 #include "imgui.h"
+#include "log.h"
 
 void SetupImGuiStyle();
-
 HWND getWorkerwWindow();
 
 std::string readFileContents(const char* filename);
+std::vector<std::string> readDirectoryContent(const char* directory);
+
 struct MonitorDimensions {
     int left = INT_MAX;
     int top = INT_MAX;
@@ -22,7 +25,6 @@ struct MonitorDimensions {
     int width() const { return right - left; }
     int height() const { return bottom - top; }
 };
-
 MonitorDimensions getMonitorDimensions();
 
 // SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, NULL, SPIF_SENDCHANGE);

@@ -127,8 +127,8 @@ namespace Mvk {
                                    
     }
 
-    VkDescriptorSet allocateDescriptorSetsUtil(Context& context) {
-        // Create a descriptor pool for combined image samplers (for MAX_FRAMES_IN_FLIGHT descriptor sets)
+
+    void createDescriptorPoolUtil(Context& context, VkDescriptorPool& descriptorPool) {
         std::array<VkDescriptorPoolSize, 1> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
@@ -138,12 +138,12 @@ namespace Mvk {
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-        VkDescriptorPool descriptorPool;
         if (vkCreateDescriptorPool(context.device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
             THROW("failed to create descriptor pool!");
         }
+    }
 
-        // Define descriptor set layout binding at binding 0 (must match usage)
+    void createDescriptorSetLayoutUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout) {
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
         samplerLayoutBinding.binding = 0;                      // Binding 0
         samplerLayoutBinding.descriptorCount = 1;
@@ -154,30 +154,30 @@ namespace Mvk {
         layoutInfo.bindingCount = 1;                            // Only one binding here
         layoutInfo.pBindings = &samplerLayoutBinding;
 
-        VkDescriptorSetLayout descriptorSetLayout;
         if (vkCreateDescriptorSetLayout(context.device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
             THROW("failed to create descriptor set layout!");
         }
+    }
 
-        // Allocate descriptor sets (one per frame)
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    std::vector<VkDescriptorSet> allocateDescriptorSetsUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorPool& descriptorPool, std::vector<VkImageView>& imageViews, std::vector<VkSampler>& samplers) {
+        int count = imageViews.size();
+        std::vector<VkDescriptorSetLayout> layouts(count, descriptorSetLayout);
 
         VkDescriptorSetAllocateInfo allocInfo{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
         allocInfo.descriptorPool = descriptorPool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(count);
         allocInfo.pSetLayouts = layouts.data();
 
-        std::vector<VkDescriptorSet> descriptorSets(MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkDescriptorSet> descriptorSets(count);
         if (vkAllocateDescriptorSets(context.device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
             THROW("failed to allocate descriptor sets!");
         }
 
-        // Update each descriptor set with the image info
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+        for (uint32_t i = 0; i < count; ++i) {
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = context.textureImageView;
-            imageInfo.sampler = context.textureImageSampler;
+            imageInfo.imageView = imageViews[i];
+            imageInfo.sampler = samplers[i];
 
             VkWriteDescriptorSet descriptorWrite{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
             descriptorWrite.dstSet = descriptorSets[i];
@@ -190,9 +190,6 @@ namespace Mvk {
             vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
         }
 
-        // If you only need to return one descriptor set, return the first:
-        // Otherwise, consider returning the vector or storing it in context
-        return descriptorSets[0];
+        return descriptorSets;
     }
-
 }

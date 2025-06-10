@@ -1,48 +1,27 @@
 #include "imgui_self.h"
 
-void renderMenuBar() {
-    ImGui::BeginMenuBar();
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Open action */ }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Save action */ }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Exit")) { /* Exit action */ }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit"))
-        {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Undo action */ }
-            if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Redo action */ }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMenuBar();
-    }
-}
-
-
-std::vector<const char*> mediaFiles {
-    ASSETS_DIR "videos/test.mp4"
-};
-
-std::vector<VkImage> mediaThumbnails;
-
-
 ImTextureID* thumbnails;
+int size;
 
-void initThumbnails(VkDescriptorSet& descriptorSet) {
-    thumbnails = new ImTextureID[1]{ (ImTextureID)descriptorSet };
+void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets) {
+    size = descriptorSets.size();
+
+    thumbnails = new ImTextureID[descriptorSets.size()];
+    for (size_t i {0}; i < descriptorSets.size(); i++) {
+        thumbnails[i] = (ImTextureID)descriptorSets[i];
+    }
 }
 
 void renderThumbnailGrid() {
     int numThumbnails = sizeof(thumbnails) / sizeof(thumbnails[0]);
     int numColumns = 4; // Number of columns in your grid
-    ImVec2 imageSize(320, 180); // Size of each thumbnail image
+    int w = WND_WIDTH / numColumns;
+    int h = w * (9./16.);
+    ImVec2 imageSize(WND_WIDTH / numColumns, h); // Size of each thumbnail image
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < size; ++i)
     {
-        if (ImGui::ImageButton("test", thumbnails[i], imageSize))
+        if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i], imageSize))
         {
 
         }

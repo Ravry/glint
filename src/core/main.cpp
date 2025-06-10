@@ -1,8 +1,5 @@
 #include "window.h"
 
-constexpr size_t WND_WIDTH = 800;
-constexpr size_t WND_HEIGHT = 600;
-
 int main(int argv, char** argc) {
     std::thread media_thread(media_func, ASSETS_DIR "videos/another.mp4");
 

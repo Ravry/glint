@@ -60,7 +60,9 @@ namespace Glint {
 
         Mvk::createSwapchain(windowContext.mvkContext);
 
-        Mvk::createDescriptorSetLayout(windowContext.mvkContext);
+        // Mvk::createDescriptorSetLayout(windowContext.mvkContext);
+
+        Mvk::createDescriptorSetLayoutUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout);
 
         Mvk::createPipeline(ASSETS_DIR "shader/standard.vert.spv", ASSETS_DIR "shader/standard.frag.spv", windowContext.mvkContext);   
         
@@ -70,13 +72,10 @@ namespace Glint {
         Mvk::createVertexBuffer(windowContext.mvkContext);
         Mvk::createIndexBuffer(windowContext.mvkContext);
         Mvk::createUniformBuffers(windowContext.mvkContext, N);
+        // Mvk::createDescriptorPool(windowContext.mvkContext);
 
-        uint8_t* data = getMediaThumbnail(ASSETS_DIR "videos/test.mp4");
-        Mvk::createTextureFromData(windowContext.mvkContext, windowContext.mvkContext.textureImage, windowContext.mvkContext.textureImageAllocation, windowContext.mvkContext.textureImageView, windowContext.mvkContext.textureImageSampler, data, 320, 180);
-
-        Mvk::createDescriptorPool(windowContext.mvkContext);
         Mvk::createDescriptorPoolImGUI(windowContext.mvkContext);
-        Mvk::allocateDescriptorSets(windowContext.mvkContext);
+        // Mvk::allocateDescriptorSets(windowContext.mvkContext);
 
         Mvk::createFramebuffers(windowContext.mvkContext);
         
@@ -108,12 +107,26 @@ namespace Glint {
             SetupImGuiStyle();
             ImGui_ImplVulkan_CreateFontsTexture();
         
+
+            std::vector<std::string> directoryContent = readDirectoryContent(ASSETS_DIR "videos/");
             
-            VkDescriptorSet descriptorSet = allocateDescriptorSetsUtil(windowContext.mvkContext);
-            initThumbnails(descriptorSet); 
+            std::vector<VkImage> images(directoryContent.size());
+            std::vector<VmaAllocation> imageAllocations(directoryContent.size());
+            std::vector<VkImageView> imageViews(directoryContent.size());
+            std::vector<VkSampler> imageSamplers(directoryContent.size());    
+
+            for (size_t i {0}; i < directoryContent.size(); i++) {
+                LOG(fmt::color::light_steel_blue, "directory content - {}\n", directoryContent[i]);
+                uint8_t* data = getMediaThumbnail(directoryContent[i].c_str());
+                Mvk::createTextureFromData(windowContext.mvkContext, images[i], imageAllocations[i], imageViews[i], imageSamplers[i], data, 320, 180);
+            }
+        
+            VkDescriptorPool descriptorPool;
+
+            Mvk::createDescriptorPoolUtil(windowContext.mvkContext, descriptorPool);
+            std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout, descriptorPool, imageViews, imageSamplers);
+            initThumbnails(descriptorSets);
         }
-
-
 
         double lastTime = glfwGetTime();
 
