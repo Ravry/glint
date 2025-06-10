@@ -9,7 +9,6 @@
 #include "imgui.h"
 #include "log.h"
 
-void SetupImGuiStyle();
 HWND getWorkerwWindow();
 
 std::string readFileContents(const char* filename);

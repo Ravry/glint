@@ -15,7 +15,6 @@ namespace Glint {
 
         if (windowCreateInfo.type == WINDOW_WALLPAPER_TYPE) {
             glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-            glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
         }
         
         windowContext.window = glfwCreateWindow(windowCreateInfo.width, windowCreateInfo.height, windowCreateInfo.title, nullptr, nullptr);
@@ -104,28 +103,26 @@ namespace Glint {
 
             ImGui_ImplVulkan_Init(&init_info);
             
-            SetupImGuiStyle();
+            MyImGUI::SetupImGuiStyle();
             ImGui_ImplVulkan_CreateFontsTexture();
         
 
             std::vector<std::string> directoryContent = readDirectoryContent(ASSETS_DIR "videos/");
-            
-            std::vector<VkImage> images(directoryContent.size());
-            std::vector<VmaAllocation> imageAllocations(directoryContent.size());
-            std::vector<VkImageView> imageViews(directoryContent.size());
-            std::vector<VkSampler> imageSamplers(directoryContent.size());    
+            size_t directoryContentCount { directoryContent.size() };
+            windowContext.mvkContext.images.resize(directoryContentCount);
+            windowContext.mvkContext.imageAllocations.resize(directoryContentCount);
+            windowContext.mvkContext.imageViews.resize(directoryContentCount);
+            windowContext.mvkContext.imageSamplers.resize(directoryContentCount);
 
             for (size_t i {0}; i < directoryContent.size(); i++) {
                 LOG(fmt::color::light_steel_blue, "directory content - {}\n", directoryContent[i]);
                 uint8_t* data = getMediaThumbnail(directoryContent[i].c_str());
-                Mvk::createTextureFromData(windowContext.mvkContext, images[i], imageAllocations[i], imageViews[i], imageSamplers[i], data, 320, 180);
+                Mvk::createTextureFromData(windowContext.mvkContext, windowContext.mvkContext.images[i], windowContext.mvkContext.imageAllocations[i], windowContext.mvkContext.imageViews[i], windowContext.mvkContext.imageSamplers[i], data, 174, 97);
             }
-        
-            VkDescriptorPool descriptorPool;
 
-            Mvk::createDescriptorPoolUtil(windowContext.mvkContext, descriptorPool);
-            std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout, descriptorPool, imageViews, imageSamplers);
-            initThumbnails(descriptorSets);
+            Mvk::createDescriptorPoolUtil(windowContext.mvkContext, windowContext.mvkContext.imageDescriptorPool, directoryContentCount);
+            std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout, windowContext.mvkContext.imageDescriptorPool, windowContext.mvkContext.imageViews, windowContext.mvkContext.imageSamplers);
+            MyImGUI::initThumbnails(descriptorSets);
         }
 
         double lastTime = glfwGetTime();
@@ -140,7 +137,7 @@ namespace Glint {
             double currentTime = glfwGetTime();
             double deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-            windowContext.mvkContext.deltaTime = static_cast<float>(deltaTime);
+            windowContext.mvkContext.deltaTime = deltaTime;
             // LOG(fmt::color::white, "deltaTime: {:.4f}s; fps: {}\n", deltaTime, static_cast<unsigned int>(1.f/deltaTime));
             
             glfwPollEvents();
@@ -198,7 +195,7 @@ namespace Glint {
                 THROW("failed to present swap chain image!\n");
             }
 
-            const double targetFPS = 165.;
+            const double targetFPS = 144.;
             const double targetHz = 1. / targetFPS;
             double frameEndTime = glfwGetTime();
             double actualHz = frameEndTime - currentTime;
@@ -210,7 +207,6 @@ namespace Glint {
 
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
-
         
         LOG(fmt::color::brown, "----------------------------------------\n");
         LOG(fmt::color::brown, "            loop-ended\n");

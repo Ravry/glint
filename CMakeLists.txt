@@ -37,7 +37,10 @@ find_package(Vulkan REQUIRED)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets/")
+target_compile_definitions(${PROJECT_NAME} PRIVATE 
+  ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets/"
+  PROJ_NAME="${PROJECT_NAME}"
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
   ${PROJECT_SOURCE_DIR}/include

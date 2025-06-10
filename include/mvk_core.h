@@ -115,7 +115,7 @@ namespace Mvk {
     
     struct Context {
         GLFWwindow* window;
-        float deltaTime;
+        double deltaTime;
         
         VkInstance instance;
         QueueFamilyIndices queueFamilyIndices;
@@ -159,6 +159,13 @@ namespace Mvk {
         VmaAllocation textureImageAllocation;
         VkImageView textureImageView;
         VkSampler textureImageSampler;
+
+    
+        std::vector<VkImage> images;
+        std::vector<VmaAllocation> imageAllocations;
+        std::vector<VkImageView> imageViews;
+        std::vector<VkSampler> imageSamplers;    
+        VkDescriptorPool imageDescriptorPool;
         
         void destroy() {   
             for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -173,9 +180,23 @@ namespace Mvk {
                 vkDestroyFramebuffer(device, swapchainFramebuffer, 0);
             }
             
+            for (auto& sampler : imageSamplers) {
+                vkDestroySampler(device, sampler, 0);
+            }
+
             vkDestroySampler(device, textureImageSampler, 0);
 
+            
+            for (auto& view : imageViews) {
+                vkDestroyImageView(device, view, 0);
+            }
+            
             vkDestroyImageView(device, textureImageView, 0);
+
+            
+            for (size_t i {0}; i < images.size(); i++) {
+                vmaDestroyImage(allocatorVMA, images[i], imageAllocations[i]);
+            }
 
             vmaDestroyImage(allocatorVMA, textureImage, textureImageAllocation);
 
@@ -194,6 +215,7 @@ namespace Mvk {
 
             vmaDestroyAllocator(allocatorVMA);
 
+            vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
             vkDestroyDescriptorPool(device, imguiDescriptorPool, 0);
             vkDestroyDescriptorPool(device, descriptorPool, 0);
 
@@ -265,7 +287,7 @@ namespace Mvk {
 
     void allocateDescriptorSets(Context& context);
 
-    void createDescriptorPoolUtil(Context& context, VkDescriptorPool& descriptorPool);
+    void createDescriptorPoolUtil(Context& context, VkDescriptorPool& descriptorPool, uint32_t count);
     void createDescriptorSetLayoutUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout);
     std::vector<VkDescriptorSet> allocateDescriptorSetsUtil(Context& context, VkDescriptorSetLayout& descriptorSetLayout, VkDescriptorPool& descriptorPool, std::vector<VkImageView>& imageViews, std::vector<VkSampler>& samplers);
 

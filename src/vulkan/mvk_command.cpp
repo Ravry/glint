@@ -89,29 +89,29 @@ namespace Mvk {
             }
         }
 
-        VkBuffer vertexBuffers[] { context.vertexBuffer };
-        VkDeviceSize offsets[] = { 0 };
+        // VkBuffer vertexBuffers[] { context.vertexBuffer };
+        // VkDeviceSize offsets[] = { 0 };
 
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, context.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        // vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        // vkCmdBindIndexBuffer(commandBuffer, context.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
         
-        VkDeviceSize alignment = context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
-        VkDeviceSize alignedSize = sizeof(UniformBufferObject);
-        if (alignment > 0) alignedSize = (alignedSize + alignment - 1) & ~(alignment - 1);
+        // VkDeviceSize alignment = context.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+        // VkDeviceSize alignedSize = sizeof(UniformBufferObject);
+        // if (alignment > 0) alignedSize = (alignedSize + alignment - 1) & ~(alignment - 1);
         
-        uint8_t* destination = reinterpret_cast<uint8_t*>(context.uniformBuffersMapped[0][currentFrame]);
-        for (size_t i {0}; i < N; i++) {
-            UniformBufferObject ubo {};
-            float tileWidth = hWidth / N;
-            ubo.model = glm::scale(
-                glm::translate(glm::mat4(1), glm::vec3(((i/static_cast<float>(N)) + .25f) * context.swapchainExtent.width, hHeight, 0.f)),
-                glm::vec3(tileWidth, hHeight, 1)
-            );
-            ubo.view = glm::mat4(1);
-            ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
+        // uint8_t* destination = reinterpret_cast<uint8_t*>(context.uniformBuffersMapped[0][currentFrame]);
+        // for (size_t i {0}; i < N; i++) {
+        //     UniformBufferObject ubo {};
+        //     float tileWidth = hWidth / N;
+        //     ubo.model = glm::scale(
+        //         glm::translate(glm::mat4(1), glm::vec3(((i/static_cast<float>(N)) + .25f) * context.swapchainExtent.width, hHeight, 0.f)),
+        //         glm::vec3(tileWidth, hHeight, 1)
+        //     );
+        //     ubo.view = glm::mat4(1);
+        //     ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
 
-            memcpy(destination + i * alignedSize, &ubo, sizeof(UniformBufferObject));
-        }
+        //     memcpy(destination + i * alignedSize, &ubo, sizeof(UniformBufferObject));
+        // }
 
         // for (size_t i {0}; i < N; i++) {
         //     uint32_t dynamicOffset = i * alignedSize;
@@ -144,7 +144,8 @@ namespace Mvk {
                 ImGuiWindowFlags_NoTitleBar;
 
             ImGui::Begin("Wallpaper Selector", nullptr, flags);
-
+            
+            
             const float titleBarHeight = 30.0f;
             const ImVec2 windowPos = ImGui::GetWindowPos();
             const ImVec2 windowSize = ImGui::GetWindowSize();
@@ -157,7 +158,7 @@ namespace Mvk {
             static bool dragging = false;
             static ImVec2 dragOffset;
 
-            ImVec2 dragZoneSize = ImVec2(windowSize.x - titleBarHeight * 2, titleBarHeight);
+            ImVec2 dragZoneSize = ImVec2(windowSize.x - titleBarHeight * 3, titleBarHeight);
             ImGui::InvisibleButton("drag_zone", dragZoneSize);
 
             if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
@@ -183,9 +184,10 @@ namespace Mvk {
             if (!ImGui::IsMouseDown(0)) {
                 dragging = false;
             }
-
+            
+            
             ImGui::SetCursorPos(ImVec2(10, (titleBarHeight - ImGui::GetTextLineHeight()) * 0.5f));
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "Wallpaper Selector");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), PROJ_NAME);
 
             ImGui::SetCursorPos(ImVec2(windowSize.x - titleBarHeight, 0));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 0.0f));
@@ -208,13 +210,38 @@ namespace Mvk {
             }
 
             ImGui::PopStyleColor(3);
+    
+            ImGui::SetCursorPosY(titleBarHeight);
+            ImVec2 childSize = ImVec2(windowSize.x, windowSize.y - titleBarHeight);
+            ImGui::BeginChild("ContentRegion", childSize, false);
 
-            ImGui::SetCursorPos(ImVec2(0, titleBarHeight));
+            constexpr float marginX = 10.f;
+             
+            if(ImGui::CollapsingHeader("settings")) {
+                ImGui::Indent(marginX);
+                ImGui::Text("Under maintenance...\nIn case you want to contribute feel free to do so via https://github.com/Ravry/glint");
+                ImGui::Unindent(marginX);
+            }
+            
+            if(ImGui::CollapsingHeader("media")) {
+                MyImGUI::renderThumbnailGrid();
+            }
 
+            if(ImGui::CollapsingHeader("about")) {
+                ImGui::Indent(marginX);
+                ImGui::Text("This open-source wallpaper engine was made by https://github.com/Ravry.\nIn case you want to contribute feel free to do so via https://github.com/Ravry/glint\nThe used resources are fmt, glfw, vulkan-api, glm and ffmpeg.");
+                ImGui::Unindent(marginX);
+                ImGui::Separator();
+            }
+
+            ImGui::Spacing();
             std::string strFPS = "FPS: " + std::to_string(1. / context.deltaTime);
-            ImGui::Text(strFPS.c_str());
+            ImGui::Indent(marginX);
+            ImGui::Text(strFPS.c_str()); 
+            ImGui::Unindent(marginX);   
+            ImGui::Spacing();
 
-            renderThumbnailGrid();
+            ImGui::EndChild(); 
 
             ImGui::End();
 
@@ -222,11 +249,6 @@ namespace Mvk {
             ImDrawData* draw_data = ImGui::GetDrawData();
             ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
         }
-
-
-
-
-
 
         vkCmdEndRenderPass(commandBuffer);
 

@@ -7,5 +7,8 @@
 inline constexpr size_t WND_WIDTH = 800;
 inline constexpr size_t WND_HEIGHT = 600;
 
-void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets);
-void renderThumbnailGrid();
+namespace MyImGUI {
+    void SetupImGuiStyle();
+    void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets);
+    void renderThumbnailGrid();
+}

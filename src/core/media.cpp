@@ -148,9 +148,9 @@ uint8_t* getMediaThumbnail(const char* filename) {
 
     int width = _codecCtx->width;
     int height = _codecCtx->height;
-
-    int dstWidth = 320;
-    int dstHeight = 180;
+    
+    int dstWidth = 174;
+    int dstHeight = 97;
 
     struct SwsContext* _swsCtx = sws_getContext(width, height, _codecCtx->pix_fmt,
                                                dstWidth, dstHeight, AV_PIX_FMT_RGBA,
