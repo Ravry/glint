@@ -252,7 +252,7 @@ namespace Mvk {
     void createSurface(Context& context, GLFWwindow* window);
 
     void createImageView(Context& context, VkImage image, VkFormat format, VkImageView& result);
-    void createSwapchain(Context& context);
+    void createSwapchain(Context &context, VkPresentModeKHR desiredPresentMode);
     void recreateSwapchain(Context& context);
 
     void createPipeline(const std::string& vertFilepath, const std::string& fragFilepath, Context& context);
@@ -261,8 +261,10 @@ namespace Mvk {
 
     void createCommandPool(Context& context);
 
-    void createCommandBuffer(Context& context);
-    void recordCommandBuffer(Context& context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
+    void createCommandBuffer(Context &context);
+
+    void recordCommandBufferSelector(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
+    void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
 
     void createSyncObjects(Context& context);
 

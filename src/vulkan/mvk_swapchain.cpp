@@ -10,9 +10,9 @@ namespace Mvk {
         return availableFormats[0];
     }
 
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes, VkPresentModeKHR desiredPresentMode) {
         for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            if (availablePresentMode == desiredPresentMode) {
                 return availablePresentMode;
             }
         }
@@ -37,15 +37,16 @@ namespace Mvk {
             return actualExtent;
         }
     }
-    
-    void createSwapchain(Context& context) {
+
+    void createSwapchain(Context &context, VkPresentModeKHR desiredPresentMode)
+    {
         SwapChainSupportDetails details;
         querySwapChainSupport(context.physicalDevice, context, details);
 
         context.swapchainDetails = details;
 
         VkSurfaceFormatKHR surfaceFormat = chooseSwapchainSurfaceFormat(details.formats);
-        VkPresentModeKHR presentMode = chooseSwapPresentMode(details.presentModes);
+        VkPresentModeKHR presentMode = chooseSwapPresentMode(details.presentModes, desiredPresentMode);
         VkExtent2D extent = chooseSwapExtent(context, details.capabilites);
 
         uint32_t imageCount = details.capabilites.minImageCount + 1;
@@ -121,7 +122,7 @@ namespace Mvk {
 
         vkDestroySwapchainKHR(context.device, context.swapchain, 0);
 
-        createSwapchain(context);
+        createSwapchain(context, VK_PRESENT_MODE_FIFO_KHR);
         createFramebuffers(context);
     }
 }
