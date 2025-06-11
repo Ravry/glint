@@ -16,9 +16,6 @@ namespace MyImGUI {
     
     ImVec2 windowSize; 
 
-    float tintColor[3] { 1, 1, 1 };
-    int fpsInput {30};
-
     void SetupImGuiStyle() {
         ImGuiStyle &style = ImGui::GetStyle();
         ImVec4 *colors = style.Colors;
@@ -81,12 +78,12 @@ namespace MyImGUI {
         style.ScrollbarSize = 16.0f;
     }
 
-    void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets) {
+    void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets, std::vector<std::string>& filenames) {
         size = descriptorSets.size();
         thumbnails.resize(size);
 
         for (size_t i {0}; i < size; i++) {
-            thumbnails[i].first = "";
+            thumbnails[i].first = filenames[i];
             thumbnails[i].second = (ImTextureID)descriptorSets[i];
         }
 
@@ -190,8 +187,11 @@ namespace MyImGUI {
                     ImGui::Text("general");
                     ImGui::Spacing();
                     ImGui::Indent(marginX);
-                    ImGui::InputInt("framerate", &fpsInput);
-                    ImGui::ColorEdit3("tint", tintColor);
+                    {
+                        std::lock_guard<std::mutex> lock(sharedSettingsMutex);
+                        ImGui::InputInt("framerate", &sharedSettings.fps);
+                        ImGui::ColorEdit3("tint", sharedSettings.tintColor);
+                    }
                     ImGui::Unindent(marginX * 2);
                     ImGui::End();
                 }
@@ -214,13 +214,16 @@ namespace MyImGUI {
         {
             if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i].second, imageSize)) {
                 selectedWallpaper = i;
+                {
+                    std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
+                    MyImGUI::sharedSettings.mediaFile.push(thumbnails[i].first);
+                }
             }
 
             if ((i + 1) % numColumns != 0 && i != (size - 1))
                 ImGui::SameLine(0, marginX);
         }
         ImGui::Unindent(marginX); 
-        
     }
 
     void renderMediaHeader() {

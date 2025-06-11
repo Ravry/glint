@@ -25,5 +25,3 @@ struct MonitorDimensions {
     int height() const { return bottom - top; }
 };
 MonitorDimensions getMonitorDimensions();
-
-// SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, NULL, SPIF_SENDCHANGE);

@@ -88,7 +88,7 @@ namespace Mvk {
         if (!enableValidationLayers)
             return; 
             
-        if (CreateDebugUtilsMessengerEXT(context.instance, &debugCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+        if (CreateDebugUtilsMessengerEXT(context.instance, &debugCreateInfo, nullptr, &context.debugMessenger) != VK_SUCCESS) {
             THROW("failed to set up debug messenger!");
         }
     }

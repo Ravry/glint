@@ -15,12 +15,12 @@ namespace Glint {
         windowContext.window = glfwCreateWindow(windowCreateInfo.width, windowCreateInfo.height, windowCreateInfo.title, nullptr, nullptr);
         windowContext.handle = glfwGetWin32Window(windowContext.window);
 
-        // if (windowContext.type == WINDOW_WALLPAPER_TYPE) {
-        //     MonitorDimensions monitorDimensions = getMonitorDimensions();
-        //     HWND workerW = getWorkerwWindow();
-        //     SetParent(windowContext.handle, workerW);
-        //     SetWindowPos(windowContext.handle, 0, 0, 0, monitorDimensions.width(), monitorDimensions.height(), 0);
-        // }
+        if (windowContext.type == WINDOW_WALLPAPER_TYPE) {
+            MonitorDimensions monitorDimensions = getMonitorDimensions();
+            HWND workerW = getWorkerwWindow();
+            SetParent(windowContext.handle, workerW);
+            SetWindowPos(windowContext.handle, 0, 0, 0, monitorDimensions.width(), monitorDimensions.height(), 0);
+        }
 
         glfwSetWindowUserPointer(windowContext.window, &windowContext);
 
@@ -35,13 +35,19 @@ namespace Glint {
     void cleanup(WindowContext& windowContext) {
         vkDeviceWaitIdle(windowContext.mvkContext.device);
         
-        ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
+        if (windowContext.type == WINDOW_DEFAULT_TYPE)
+        {
+            ImGui_ImplVulkan_Shutdown();
+            ImGui_ImplGlfw_Shutdown();
+            ImGui::DestroyContext();       
+        }
 
         windowContext.mvkContext.destroy();
         glfwDestroyWindow(windowContext.window);
         glfwTerminate();
+
+        if (windowContext.type == WINDOW_WALLPAPER_TYPE)
+            SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, NULL, SPIF_SENDCHANGE);
     }
 
     void runWallpaperWindow(WindowContext& windowContext) {
@@ -52,8 +58,7 @@ namespace Glint {
         Mvk::createSwapchain(windowContext.mvkContext, VK_PRESENT_MODE_MAILBOX_KHR);
 
         Mvk::createDescriptorSetLayout(windowContext.mvkContext);
-        Mvk::createPipeline(ASSETS_DIR "shader/standard.vert.spv", ASSETS_DIR "shader/standard.frag.spv", windowContext.mvkContext);
-
+        Mvk::createPipeline(ASSETS_DIR "shader/standard/standard.vert.spv", ASSETS_DIR "shader/standard/standard.frag.spv", windowContext.mvkContext, true);
         Mvk::createCommandPool(windowContext.mvkContext);
         Mvk::createCommandBuffer(windowContext.mvkContext);
 
@@ -78,11 +83,14 @@ namespace Glint {
         double timerTime { 0. };
         size_t frameCount { 0 };
 
-        while (!glfwWindowShouldClose(windowContext.window)) {
+        while (!glfwWindowShouldClose(windowContext.window) && !windowClosed) {
             double startTime = glfwGetTime();
             auto frameStartTime = std::chrono::steady_clock::now();
-            auto nextFrameTime = frameStartTime + std::chrono::milliseconds(50);
-
+            auto nextFrameTime = frameStartTime;
+            {
+                std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
+                nextFrameTime += std::chrono::milliseconds(static_cast<int64_t>(1000. / MyImGUI::sharedSettings.fps));
+            }
             vkWaitForFences(windowContext.mvkContext.device, 1, &windowContext.mvkContext.inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
 
             uint32_t imageIndex{0};
@@ -141,13 +149,13 @@ namespace Glint {
 
             std::this_thread::sleep_until(nextFrameTime);
 
-            ++frameCount;
-            timerTime += glfwGetTime() - startTime;
-            if (timerTime >= 1.) {
-                LOG(fmt::color::aqua, "fps: {}\n", frameCount);
-                timerTime = 0;
-                frameCount = 0;
-            }
+            // ++frameCount;
+            // timerTime += glfwGetTime() - startTime;
+            // if (timerTime >= 1.) {
+            //     LOG(fmt::color::aqua, "fps: {}\n", frameCount);
+            //     timerTime = 0;
+            //     frameCount = 0;
+            // }
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
     }
@@ -160,7 +168,7 @@ namespace Glint {
         Mvk::createSwapchain(windowContext.mvkContext, VK_PRESENT_MODE_FIFO_KHR);
 
         Mvk::createDescriptorSetLayoutUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout);
-        Mvk::createPipeline(ASSETS_DIR "shader/standard.vert.spv", ASSETS_DIR "shader/standard.frag.spv", windowContext.mvkContext);
+        Mvk::createPipeline(ASSETS_DIR "shader/default/default.vert.spv", ASSETS_DIR "shader/default/default.frag.spv", windowContext.mvkContext, false);
 
         Mvk::createCommandPool(windowContext.mvkContext);
         Mvk::createCommandBuffer(windowContext.mvkContext);
@@ -213,7 +221,7 @@ namespace Glint {
 
             Mvk::createDescriptorPoolUtil(windowContext.mvkContext, windowContext.mvkContext.imageDescriptorPool, directoryContentCount);
             std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout, windowContext.mvkContext.imageDescriptorPool, windowContext.mvkContext.imageViews, windowContext.mvkContext.imageSamplers);
-            MyImGUI::initThumbnails(descriptorSets);
+            MyImGUI::initThumbnails(descriptorSets, directoryContent);
         }
 
         uint32_t currentFrame{0};
@@ -285,6 +293,8 @@ namespace Glint {
 
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
+
+        windowClosed = true;
     }
 
     void runWindow(WindowContext& windowContext) {
@@ -302,8 +312,7 @@ namespace Glint {
         LOG(fmt::color::brown, "----------------------------------------\n");
         LOG(fmt::color::brown, "            loop-ended\n");
         LOG(fmt::color::brown, "----------------------------------------\n");
-        
-        windowClosed = true;
+
         cleanup(windowContext);
     }
 }

@@ -94,6 +94,39 @@ void media_func(const char* filename) {
             }
 
             av_packet_unref(packet);
+
+            std::string file;
+            {
+                std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
+                if (MyImGUI::sharedSettings.mediaFile.size() > 0)
+                {
+                    file = MyImGUI::sharedSettings.mediaFile.front();
+                    MyImGUI::sharedSettings.mediaFile.pop();
+                }
+            }
+
+            if (file.length() > 0) {
+                avformat_close_input(&fmtCtx);
+
+                if (avformat_open_input(&fmtCtx, file.c_str(), nullptr, nullptr) != 0) THROW("could not open file");
+                if (avformat_find_stream_info(fmtCtx, nullptr) < 0) THROW("could not find stream info");
+                
+                for (unsigned int i{0}; i < fmtCtx->nb_streams; i++)
+                {
+                    if (fmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+                    {
+                        videoStream = fmtCtx->streams[i];
+                        videoStreamIndex = i;
+                        break;
+                    }
+                }
+
+                avcodec_free_context(&codecCtx);
+                codecCtx = avcodec_alloc_context3(codec);
+                avcodec_parameters_to_context(codecCtx, videoStream->codecpar);
+                codecCtx->hw_device_ctx = av_buffer_ref(hwDeviceCtx);
+                avcodec_open2(codecCtx, codec, nullptr);
+            }
         }
 
         av_freep(&scaled_data[0]);

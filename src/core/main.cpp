@@ -22,6 +22,7 @@ int main(int argv, char** argc) {
             media_thread.join();
         }
         catch (std::exception& ex) { fmt::print(fmt::fg(fmt::color::blue) | fmt::emphasis::bold, ex.what()); return -1; }
+        return 0;
     });
 
     /* ███████╗███████╗██╗     ███████╗ ██████╗████████╗ ██████╗ ██████╗  */
@@ -42,5 +43,6 @@ int main(int argv, char** argc) {
     try { Glint::runWindow(selectorWindowContext); } catch (std::exception& ex) { fmt::print(fmt::fg(fmt::color::blue) | fmt::emphasis::bold, ex.what()); return -1; }
 
     wallpaperWindow_thread.join();
+
     return 0;
 }

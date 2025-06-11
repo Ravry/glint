@@ -95,8 +95,6 @@ inline void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMesse
     }
 }
 
-inline VkDebugUtilsMessengerEXT debugMessenger;
-
 namespace Mvk {
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
@@ -116,7 +114,8 @@ namespace Mvk {
     struct Context {
         GLFWwindow* window;
         double deltaTime;
-        
+
+        VkDebugUtilsMessengerEXT debugMessenger;
         VkInstance instance;
         QueueFamilyIndices queueFamilyIndices;
         VkPhysicalDevice physicalDevice;
@@ -255,7 +254,7 @@ namespace Mvk {
     void createSwapchain(Context &context, VkPresentModeKHR desiredPresentMode);
     void recreateSwapchain(Context& context);
 
-    void createPipeline(const std::string& vertFilepath, const std::string& fragFilepath, Context& context);
+    void createPipeline(const std::string &vertFilepath, const std::string &fragFilepath, Context &context, bool consumeUV);
 
     void createFramebuffers(Context& context);
 

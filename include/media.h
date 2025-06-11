@@ -16,6 +16,7 @@ extern "C" {
 }
 
 #include "log.h"
+#include "imgui_self.h"
 
 inline AVFormatContext* fmtCtx {nullptr};
 inline int videoStreamIndex {-1};

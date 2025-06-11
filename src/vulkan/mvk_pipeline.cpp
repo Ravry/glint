@@ -69,7 +69,7 @@ namespace Mvk {
         }
     }
 
-    void createPipeline(const std::string& vertFilepath, const std::string& fragFilepath, Context& context) {
+    void createPipeline(const std::string& vertFilepath, const std::string& fragFilepath, Context& context, bool consumeUV) {
         auto vertCode = readFile(vertFilepath);
         auto fragCode = readFile(fragFilepath);
 
@@ -94,8 +94,13 @@ namespace Mvk {
         VkPipelineVertexInputStateCreateInfo vertexInputInfo { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
         vertexInputInfo.vertexBindingDescriptionCount = 1;
         vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data(); 
+        if (consumeUV) {
+            vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
+            vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();     
+        } else {
+            vertexInputInfo.vertexAttributeDescriptionCount = 1;
+            vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription.at(0);
+        }
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
         inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
