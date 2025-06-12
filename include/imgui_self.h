@@ -6,13 +6,22 @@
 #include "media.h"
 #include "log.h"
 #include "utils.h"
+#include "mvk_core.h"
 
 inline constexpr size_t WND_WIDTH = 800;
 inline constexpr size_t WND_HEIGHT = 600;
 
+namespace Mvk
+{
+    class Context;
+}
+
 namespace MyImGUI {
+    inline std::queue<const char*> pathUpdateQueue;
+
     void SetupImGuiStyle();
-    void initThumbnails(std::vector<VkDescriptorSet> &descriptorSets, std::vector<std::string> &filenames);
+    void initMyImGUI(Mvk::Context &context);
+    void handleUpdatePathQueue(Mvk::Context &context);
 
     struct SharedSettings
     {
@@ -25,5 +34,5 @@ namespace MyImGUI {
     inline std::mutex sharedSettingsMutex;
     inline SharedSettings sharedSettings;
 
-    void renderWindow(GLFWwindow* window, double deltaTime, int width, int height);
+    void renderWindow(Mvk::Context &context, double deltaTime, int width, int height);
 }

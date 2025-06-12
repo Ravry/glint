@@ -186,7 +186,7 @@ namespace Mvk {
             ImGui_ImplVulkan_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
-            MyImGUI::renderWindow(context.window, context.deltaTime, context.swapchainExtent.width, context.swapchainExtent.height);
+            MyImGUI::renderWindow(context, context.deltaTime, context.swapchainExtent.width, context.swapchainExtent.height);
             ImGui::Render();
             ImDrawData* draw_data = ImGui::GetDrawData();
             ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);

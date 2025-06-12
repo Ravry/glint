@@ -60,25 +60,58 @@ std::vector<std::string> readDirectoryContent(const char *directory) {
 
 std::string OpenFolderDialog(HWND owner)
 {
-    char path[MAX_PATH] = {0};
+    std::string folderPath;
 
-    BROWSEINFO bi = {0};
-    bi.lpszTitle = "Select a folder";
-    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-    bi.hwndOwner = owner;
-
-    PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&bi);
-    if (pidl != nullptr)
+    // Initialize COM
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (SUCCEEDED(hr))
     {
-        if (SHGetPathFromIDList(pidl, path))
+        IFileDialog *pFileDialog = nullptr;
+
+        // Create the FileOpenDialog object
+        hr = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                              IID_PPV_ARGS(&pFileDialog));
+
+        if (SUCCEEDED(hr))
         {
-            CoTaskMemFree(pidl);
-            return std::string(path);
+            // Set options to select folders
+            DWORD dwOptions;
+            pFileDialog->GetOptions(&dwOptions);
+            pFileDialog->SetOptions(dwOptions | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+
+            // Show the dialog
+            hr = pFileDialog->Show(owner);
+
+            if (SUCCEEDED(hr))
+            {
+                IShellItem *pItem = nullptr;
+                hr = pFileDialog->GetResult(&pItem);
+
+                if (SUCCEEDED(hr))
+                {
+                    PWSTR pszFilePath = nullptr;
+                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                    if (SUCCEEDED(hr))
+                    {
+                        // Convert to std::string
+                        char path[MAX_PATH];
+                        wcstombs(path, pszFilePath, MAX_PATH);
+                        folderPath = path;
+                        CoTaskMemFree(pszFilePath);
+                    }
+
+                    pItem->Release();
+                }
+            }
+
+            pFileDialog->Release();
         }
-        CoTaskMemFree(pidl);
+
+        CoUninitialize();
     }
 
-    return ""; // Canceled or failed
+    return folderPath;
 }
 
 MonitorDimensions getMonitorDimensions() {

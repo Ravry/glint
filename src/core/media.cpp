@@ -142,10 +142,14 @@ void media_func(const char* filename) {
 
 uint8_t* getMediaThumbnail(const char* filename) {
     AVFormatContext* _formatCtx = nullptr;
-    if (avformat_open_input(&_formatCtx, filename, nullptr, nullptr) < 0)
-        THROW("Failed to open input file");
-    if (avformat_find_stream_info(_formatCtx, nullptr) < 0)
-        THROW("Failed to find stream info");
+    if (avformat_open_input(&_formatCtx, filename, nullptr, nullptr) < 0) {
+        LOG(fmt::color::red, "Failed to open input file: {}\n", filename);
+        return nullptr;
+    }
+    if (avformat_find_stream_info(_formatCtx, nullptr) < 0) {
+        LOG(fmt::color::red, "Failed to find stream info {}\n", filename);
+        return nullptr;
+    }
 
     int videoStreamIndex = -1;
     AVStream* videoStream = nullptr;

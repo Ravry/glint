@@ -14,7 +14,9 @@ namespace MyImGUI {
     float windowPaddingX, framePaddingX;
     int size, w, h;
     
-    ImVec2 windowSize; 
+    ImVec2 windowSize;
+
+    char dirPath[512] = ASSETS_DIR "videos/";
 
     void SetupImGuiStyle() {
         ImGuiStyle &style = ImGui::GetStyle();
@@ -78,15 +80,83 @@ namespace MyImGUI {
         style.ScrollbarSize = 16.0f;
     }
 
-    void initThumbnails(std::vector<VkDescriptorSet>& descriptorSets, std::vector<std::string>& filenames) {
+    bool isVideoFile(const std::string &filepath)
+    {
+        static const std::set<std::string> videoExts = {
+            ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".m4v"};
+
+        std::string ext = std::filesystem::path(filepath).extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+        return videoExts.find(ext) != videoExts.end();
+    }
+
+    void setupThumbnails(Mvk::Context &context, const char* filepath)
+    {
+        std::vector<std::string> directoryContentUsable;
+
+        {
+            std::vector<std::string> directoryContents = readDirectoryContent(filepath);
+            for (auto &directoryContent : directoryContents)
+            {
+                if (isVideoFile(directoryContent))
+                {
+                    directoryContentUsable.push_back(directoryContent);
+                    LOG(fmt::color::light_steel_blue, "video-file ~ {}\n", directoryContent);
+                }
+                else
+                {
+                    LOG(fmt::color::dark_orange, "not-video-file ~ {}\n", directoryContent);
+                }
+            }
+        }
+
+        size_t directoryContentCount {directoryContentUsable.size()};
+        
+        if (directoryContentCount == 0)
+            return;
+
+        context.images.resize(directoryContentCount);
+        context.imageAllocations.resize(directoryContentCount);
+        context.imageViews.resize(directoryContentCount);
+        context.imageSamplers.resize(directoryContentCount);
+
+        for (size_t i{0}; i < directoryContentCount; i++) {
+            uint8_t *data = getMediaThumbnail(directoryContentUsable[i].c_str());
+            if (data)
+                Mvk::createTextureFromData(context, context.images[i], context.imageAllocations[i], context.imageViews[i], context.imageSamplers[i], data, 174, 97);
+        }
+
+        Mvk::createDescriptorPoolUtil(context, context.imageDescriptorPool, directoryContentCount);
+
+        std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(context, context.descriptorSetLayout, context.imageDescriptorPool, context.imageViews, context.imageSamplers);
+        
         size = descriptorSets.size();
         thumbnails.resize(size);
 
-        for (size_t i {0}; i < size; i++) {
-            thumbnails[i].first = filenames[i];
+        for (size_t i{0}; i < size; i++)
+        {
+            thumbnails[i].first = directoryContentUsable[i];
             thumbnails[i].second = (ImTextureID)descriptorSets[i];
         }
+    
+    }
 
+    void handleUpdatePathQueue(Mvk::Context& context) {
+        if (pathUpdateQueue.size() == 0)
+            return;
+
+        selectedWallpaper = -1;
+        size = 0;
+        thumbnails.clear();
+        context.destroyImagesAndBelongings();
+        strcpy(dirPath, pathUpdateQueue.front());
+        pathUpdateQueue.pop();
+        setupThumbnails(context, dirPath);
+    }
+
+    void initMyImGUI(Mvk::Context &context)
+    {
         ImGuiStyle& style = ImGui::GetStyle();
         
         windowPaddingX = style.WindowPadding.x;
@@ -98,6 +168,8 @@ namespace MyImGUI {
         h = w * (9./16.);
         
         LOG(fmt::color::peru, "thumbnail - [width|{}] [height|{}]\n", w, h);
+
+        setupThumbnails(context, dirPath);
     }
 
     void renderCustomTitlebar(GLFWwindow* window) {
@@ -176,7 +248,8 @@ namespace MyImGUI {
             ImGui::Text("active wallpaper:");
             ImGui::SameLine();
             if (selectedWallpaper >= 0) {
-                if (ImGui::ImageButton("active_thumb", thumbnails[selectedWallpaper].second, ImVec2(240, 135))) {
+                if (ImGui::ImageButton("active_thumb", thumbnails[selectedWallpaper].second, ImVec2(240, 135)))
+                {
                     externalSettingsOpened = true;
                 }
 
@@ -224,20 +297,22 @@ namespace MyImGUI {
         }
     }
 
-    void renderMediaHeader() {
+    void renderMediaHeader(Mvk::Context &context) {
         if(ImGui::CollapsingHeader("media", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent(marginX);
-            static std::string dirPath = ASSETS_DIR "videos/";
-
             if (ImGui::Button("Browse")) {
-                dirPath = OpenFolderDialog();
-                std::cout << dirPath << std::endl;
+                std::string selectedPath = OpenFolderDialog();
+                if (!selectedPath.empty()) {
+                    strncpy(dirPath, selectedPath.c_str(), sizeof(dirPath));
+                    dirPath[sizeof(dirPath) - 1] = '\0';
+                }
             }
             ImGui::SameLine();
-            if (ImGui::InputText("Directory Path", dirPath.data(), IM_ARRAYSIZE(dirPath.data()))) {
+            if (ImGui::InputText("Directory Path", dirPath, sizeof(dirPath))) {
             }
             ImGui::SameLine();
             if (ImGui::Button("Apply")) {
+                pathUpdateQueue.push(dirPath);
             }
 
             renderThumbnailGrid();
@@ -272,20 +347,21 @@ namespace MyImGUI {
         ImGui::Spacing();
     }
 
-    void renderWindowContent(GLFWwindow* window, double deltaTime) {
+    void renderWindowContent(Mvk::Context &context, double deltaTime) {
         ImGui::SetCursorPosY(titleBarHeight);
         ImVec2 childSize = ImVec2(windowSize.x, windowSize.y - titleBarHeight);
         ImGui::BeginChild("ContentRegion", childSize, false);
             
         renderSettingsHeader();
-        renderMediaHeader();
+        renderMediaHeader(context);
         renderAboutHeader();
         renderFooter(deltaTime);
 
-        ImGui::EndChild(); 
+        ImGui::EndChild();
     }
 
-    void renderWindow(GLFWwindow* window, double deltaTime, int width, int height) {
+    void renderWindow(Mvk::Context &context, double deltaTime, int width, int height)
+    {
         if (firstFrame) {
             ImGui::SetNextWindowPos(ImVec2(0, 0));
             ImGui::SetNextWindowSize(ImVec2(width, height));
@@ -302,8 +378,8 @@ namespace MyImGUI {
 
         ImGui::Begin("Wallpaper Selector", nullptr, flags);
 
-        renderCustomTitlebar(window);
-        renderWindowContent(window, deltaTime);
+        renderCustomTitlebar(context.window);
+        renderWindowContent(context, deltaTime);
         
         ImGui::End();
     }

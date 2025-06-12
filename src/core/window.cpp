@@ -1,6 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
 #include "window.h"
+#include "imgui_self.h"
 
 namespace Glint {
     void createWindow(WindowContext& windowContext, WindowCreateInfo& windowCreateInfo) {
@@ -161,6 +162,12 @@ namespace Glint {
     }
 
     void runSelectorWindow(WindowContext& windowContext) {
+        LONG exStyle = GetWindowLong(windowContext.handle, GWL_EXSTYLE);
+        SetWindowLong(windowContext.handle, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+        BYTE alpha = 225;
+        COLORREF transparentColor = RGB(0, 0, 0);
+        SetLayeredWindowAttributes(windowContext.handle, transparentColor, alpha, LWA_ALPHA);
+
         int width, height, nrChannels;
         unsigned char* pixels = stbi_load(ASSETS_DIR "img/icon.png", &width, &height, &nrChannels, 4);
         GLFWimage image[1];
@@ -214,23 +221,7 @@ namespace Glint {
             MyImGUI::SetupImGuiStyle();
             ImGui_ImplVulkan_CreateFontsTexture();
 
-            std::vector<std::string> directoryContent = readDirectoryContent(ASSETS_DIR "videos/");
-            size_t directoryContentCount{directoryContent.size()};
-            windowContext.mvkContext.images.resize(directoryContentCount);
-            windowContext.mvkContext.imageAllocations.resize(directoryContentCount);
-            windowContext.mvkContext.imageViews.resize(directoryContentCount);
-            windowContext.mvkContext.imageSamplers.resize(directoryContentCount);
-
-            for (size_t i{0}; i < directoryContent.size(); i++)
-            {
-                LOG(fmt::color::light_steel_blue, "directory content - {}\n", directoryContent[i]);
-                uint8_t *data = getMediaThumbnail(directoryContent[i].c_str());
-                Mvk::createTextureFromData(windowContext.mvkContext, windowContext.mvkContext.images[i], windowContext.mvkContext.imageAllocations[i], windowContext.mvkContext.imageViews[i], windowContext.mvkContext.imageSamplers[i], data, 174, 97);
-            }
-
-            Mvk::createDescriptorPoolUtil(windowContext.mvkContext, windowContext.mvkContext.imageDescriptorPool, directoryContentCount);
-            std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(windowContext.mvkContext, windowContext.mvkContext.descriptorSetLayout, windowContext.mvkContext.imageDescriptorPool, windowContext.mvkContext.imageViews, windowContext.mvkContext.imageSamplers);
-            MyImGUI::initThumbnails(descriptorSets, directoryContent);
+            MyImGUI::initMyImGUI(windowContext.mvkContext);
         }
 
         uint32_t currentFrame{0};
@@ -284,6 +275,8 @@ namespace Glint {
             if (vkQueueSubmit(windowContext.mvkContext.graphicsQueue, 1, &submitInfo, windowContext.mvkContext.inFlightFence[currentFrame]) != VK_SUCCESS) {
                 THROW("failed to submit draw command buffer!\n");
             }
+
+            MyImGUI::handleUpdatePathQueue(windowContext.mvkContext);
 
             VkSwapchainKHR swapchains[]{windowContext.mvkContext.swapchain};
 

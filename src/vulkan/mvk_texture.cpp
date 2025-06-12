@@ -148,7 +148,8 @@ namespace Mvk {
         }
     }
 
-    void createTextureImage(Context& context, const char* imageFile) {
+    void createTextureImage(Context &context, const char *imageFile, VkImage &image, VmaAllocation &allocation, VkImageView &imageView, VkSampler &sampler)
+    {
         int width, height, nrChannels;
         stbi_uc* pixels = stbi_load(imageFile, &width, &height, &nrChannels, STBI_rgb_alpha);
 
@@ -167,19 +168,19 @@ namespace Mvk {
 
         stbi_image_free(pixels);
         
-        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_GPU_ONLY, context.textureImage, context.textureImageAllocation);
+        createImage(context, width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VMA_MEMORY_USAGE_GPU_ONLY, image, allocation);
         
-        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        transitionImageLayout(context, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-        copyBufferToImage(context, stagingBuffer, context.textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+        copyBufferToImage(context, stagingBuffer, image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
-        transitionImageLayout(context, context.textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(context, image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
         vmaDestroyBuffer(context.allocatorVMA, stagingBuffer, stagingBufferAllocation);
 
-        createTextureImageView(context);
+        createImageView(context, image, VK_FORMAT_R8G8B8A8_SRGB, imageView);
 
-        createTextureSampler(context, context.textureImageSampler);
+        createTextureSampler(context, sampler);
     }
 
     void createTextureFromData(Context& context, VkImage& image, VmaAllocation& allocation, VkImageView& imageView, VkSampler& sampler, uint8_t* pixels, int width, int height) {

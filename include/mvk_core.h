@@ -18,7 +18,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <stb_image.h>
 #include "media.h"
-#include "imgui_self.h"
 
 inline constexpr size_t N = 2;
 
@@ -167,6 +166,25 @@ namespace Mvk {
         std::vector<VkSampler> imageSamplers;    
         VkDescriptorPool imageDescriptorPool;
         
+        void destroyImagesAndBelongings() {
+            vkDeviceWaitIdle(device);
+            
+            for (auto &sampler : imageSamplers)
+            {
+                vkDestroySampler(device, sampler, 0);
+            }
+            
+            for (auto& view : imageViews) {
+                vkDestroyImageView(device, view, 0);
+            }
+            
+            for (size_t i {0}; i < images.size(); i++) {
+                vmaDestroyImage(allocatorVMA, images[i], imageAllocations[i]);
+            }
+
+            vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
+        }
+
         void destroy() {   
             for (size_t i {0}; i < MAX_FRAMES_IN_FLIGHT; i++) {
                 vkDestroyFence(device, inFlightFence[i], 0);
@@ -180,23 +198,11 @@ namespace Mvk {
                 vkDestroyFramebuffer(device, swapchainFramebuffer, 0);
             }
             
-            for (auto& sampler : imageSamplers) {
-                vkDestroySampler(device, sampler, 0);
-            }
+            destroyImagesAndBelongings();
 
             vkDestroySampler(device, textureImageSampler, 0);
-
-            
-            for (auto& view : imageViews) {
-                vkDestroyImageView(device, view, 0);
-            }
             
             vkDestroyImageView(device, textureImageView, 0);
-
-            
-            for (size_t i {0}; i < images.size(); i++) {
-                vmaDestroyImage(allocatorVMA, images[i], imageAllocations[i]);
-            }
 
             vmaDestroyImage(allocatorVMA, textureImage, textureImageAllocation);
 
@@ -215,7 +221,6 @@ namespace Mvk {
 
             vmaDestroyAllocator(allocatorVMA);
 
-            vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
             vkDestroyDescriptorPool(device, imguiDescriptorPool, 0);
             vkDestroyDescriptorPool(device, descriptorPool, 0);
 
@@ -295,7 +300,7 @@ namespace Mvk {
 
     void createDescriptorPoolImGUI(Context& context);
 
-    void createTextureImage(Context& context, const char* imageFile);
+    void createTextureImage(Context &context, const char *imageFile, VkImage &image, VmaAllocation &allocation, VkImageView &imageView, VkSampler &sampler);
     void createTexture(Context& context, const int width, const int height); 
     void updateTextureImageDataDynamic(Context& context, void*& pixelData);
     void createTextureFromData(Context& context, VkImage& image, VmaAllocation& allocation, VkImageView& imageView, VkSampler& sampler, uint8_t* pixels, int width, int height);
