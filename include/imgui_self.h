@@ -5,6 +5,7 @@
 #include "GLFW/glfw3.h"
 #include "media.h"
 #include "log.h"
+#include "utils.h"
 
 inline constexpr size_t WND_WIDTH = 800;
 inline constexpr size_t WND_HEIGHT = 600;
@@ -17,6 +18,7 @@ namespace MyImGUI {
     {
         int fps { 20 };
         float tintColor[3] { 1.f, 1.f, 1.f };
+        bool onlyPlayWhenFocused { false };
         std::queue<std::string> mediaFile;
     };
 

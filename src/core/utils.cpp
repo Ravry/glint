@@ -1,25 +1,26 @@
 #include "utils.h"
 
 // make sure to enable under performance settings -> visual effects -> animate controls and elements inside windows otherwise the wallpaper might not be placed behind the icons correctly
-HWND getWorkerwWindow() {
+WorkerWs getWorkerwWindow() {
     HWND progmanHWND = FindWindow("Progman", 0);
     SendMessageTimeout(progmanHWND, 0x052C, 0, 0, SMTO_NORMAL, 1000, 0);
 
-    HWND workerwHWND = 0;
+    WorkerWs workers {};
 
     EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
         HWND shellView = FindWindowEx(hwnd, 0, "SHELLDLL_DefView", 0);
 
         if (shellView) {
-            HWND* result = reinterpret_cast<HWND*>(lParam);
-            *result = FindWindowEx(0, hwnd, "WorkerW", 0);
+            WorkerWs *result = reinterpret_cast<WorkerWs*>(lParam);
+            result->surW = hwnd;
+            result->subW = FindWindowEx(0, hwnd, "WorkerW", 0);
             return FALSE;
         }
 
         return TRUE;
-    }, reinterpret_cast<LPARAM>(&workerwHWND));
+    }, reinterpret_cast<LPARAM>(&workers));
 
-    return workerwHWND;
+    return workers;
 }
 
 std::string readFileContents(const char *filename)
@@ -55,6 +56,29 @@ std::vector<std::string> readDirectoryContent(const char *directory) {
         THROW("filesystem error!");
     }
     return content;
+}
+
+std::string OpenFolderDialog(HWND owner)
+{
+    char path[MAX_PATH] = {0};
+
+    BROWSEINFO bi = {0};
+    bi.lpszTitle = "Select a folder";
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    bi.hwndOwner = owner;
+
+    PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&bi);
+    if (pidl != nullptr)
+    {
+        if (SHGetPathFromIDList(pidl, path))
+        {
+            CoTaskMemFree(pidl);
+            return std::string(path);
+        }
+        CoTaskMemFree(pidl);
+    }
+
+    return ""; // Canceled or failed
 }
 
 MonitorDimensions getMonitorDimensions() {

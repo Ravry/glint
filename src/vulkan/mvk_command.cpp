@@ -26,7 +26,7 @@ namespace Mvk {
     }
 
     FrameData frameData{};
-    void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame) {
+    void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, WorkerWs &workerWs) {
         const float hWidth = context.swapchainExtent.width / 2.f;
         const float hHeight = context.swapchainExtent.height / 2.f;
 
@@ -82,7 +82,19 @@ namespace Mvk {
                         frameData = frameQueue.front();
                         frameQueue.pop();
                     }
-                    updateTextureImageDataDynamic(context, frameData.pixels);
+
+                    bool onlyPlayFocused { false };
+                    {
+                        std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
+                        onlyPlayFocused = MyImGUI::sharedSettings.onlyPlayWhenFocused;
+                    }
+
+                    if (onlyPlayFocused) {
+                        if (workerWs.focus == workerWs.surW)
+                            updateTextureImageDataDynamic(context, frameData.pixels);
+                    } else {
+                        updateTextureImageDataDynamic(context, frameData.pixels);
+                    }
                     // LOG(fmt::color::lime, "consumer received frame data (from producer) - size: {}\n", frameQueue.size());
                 }
             }
@@ -112,6 +124,15 @@ namespace Mvk {
             );
             ubo.view = glm::mat4(1);
             ubo.projection = glm::ortho(0.f, static_cast<float>(context.swapchainExtent.width), 0.f, static_cast<float>(context.swapchainExtent.height));
+            
+            glm::vec3 tintVec;
+            {
+                std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
+                tintVec.x = MyImGUI::sharedSettings.tintColor[0];
+                tintVec.y = MyImGUI::sharedSettings.tintColor[1];
+                tintVec.z = MyImGUI::sharedSettings.tintColor[2];
+            }
+            ubo.tint = tintVec;
 
             memcpy(destination + i * alignedSize, &ubo, sizeof(UniformBufferObject));
         }

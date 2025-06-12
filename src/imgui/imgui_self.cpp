@@ -191,6 +191,7 @@ namespace MyImGUI {
                         std::lock_guard<std::mutex> lock(sharedSettingsMutex);
                         ImGui::InputInt("framerate", &sharedSettings.fps);
                         ImGui::ColorEdit3("tint", sharedSettings.tintColor);
+                        ImGui::Checkbox("only play when focused", &sharedSettings.onlyPlayWhenFocused);
                     }
                     ImGui::Unindent(marginX * 2);
                     ImGui::End();
@@ -208,8 +209,6 @@ namespace MyImGUI {
 
     void renderThumbnailGrid() {
         ImVec2 imageSize(w, h);
-
-        ImGui::Indent(marginX);
         for (int i = 0; i < size; ++i)
         {
             if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i].second, imageSize)) {
@@ -223,12 +222,26 @@ namespace MyImGUI {
             if ((i + 1) % numColumns != 0 && i != (size - 1))
                 ImGui::SameLine(0, marginX);
         }
-        ImGui::Unindent(marginX); 
     }
 
     void renderMediaHeader() {
-        if(ImGui::CollapsingHeader("media", ImGuiTreeNodeFlags_DefaultOpen)) { 
+        if(ImGui::CollapsingHeader("media", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Indent(marginX);
+            static std::string dirPath = ASSETS_DIR "videos/";
+
+            if (ImGui::Button("Browse")) {
+                dirPath = OpenFolderDialog();
+                std::cout << dirPath << std::endl;
+            }
+            ImGui::SameLine();
+            if (ImGui::InputText("Directory Path", dirPath.data(), IM_ARRAYSIZE(dirPath.data()))) {
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Apply")) {
+            }
+
             renderThumbnailGrid();
+            ImGui::Unindent(marginX);
         }
     }
 
@@ -241,9 +254,18 @@ namespace MyImGUI {
         }   
     }
 
+    double fpsTimer { 0 };
+    int fps { 0 };
+
     void renderFooter(double deltaTime) {
+        fpsTimer += deltaTime;
+        if (fpsTimer >= 1.) {
+            fps = static_cast<int>(1. / deltaTime);
+            fpsTimer = 0;
+        }
+        
         ImGui::Spacing();
-        std::string strFPS = "FPS: " + std::to_string(1. / deltaTime) + " ~ CC0 No Rights Reserved (https://creativecommons.org/public-domain/cc0/)";
+        std::string strFPS = "FPS: " + std::to_string(fps) + " ~ CC0 No Rights Reserved (https://creativecommons.org/public-domain/cc0/)";
         ImGui::Indent(marginX);
         ImGui::Text(strFPS.c_str()); 
         ImGui::Unindent(marginX);   

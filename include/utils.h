@@ -6,13 +6,23 @@
 #include <sstream>
 #include <filesystem>
 #include <vector>
+#include <windows.h>
+#include <shlobj.h>
+#include <commdlg.h>
 #include "imgui.h"
 #include "log.h"
 
-HWND getWorkerwWindow();
+struct WorkerWs {
+    HWND surW;
+    HWND subW;
+    HWND focus;
+};
+
+WorkerWs getWorkerwWindow();
 
 std::string readFileContents(const char* filename);
 std::vector<std::string> readDirectoryContent(const char* directory);
+std::string OpenFolderDialog(HWND owner = nullptr);
 
 struct MonitorDimensions {
     int left = INT_MAX;

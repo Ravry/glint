@@ -15,13 +15,6 @@ namespace Glint {
         windowContext.window = glfwCreateWindow(windowCreateInfo.width, windowCreateInfo.height, windowCreateInfo.title, nullptr, nullptr);
         windowContext.handle = glfwGetWin32Window(windowContext.window);
 
-        if (windowContext.type == WINDOW_WALLPAPER_TYPE) {
-            MonitorDimensions monitorDimensions = getMonitorDimensions();
-            HWND workerW = getWorkerwWindow();
-            SetParent(windowContext.handle, workerW);
-            SetWindowPos(windowContext.handle, 0, 0, 0, monitorDimensions.width(), monitorDimensions.height(), 0);
-        }
-
         glfwSetWindowUserPointer(windowContext.window, &windowContext);
 
         glfwSetFramebufferSizeCallback(windowContext.window, [] (GLFWwindow *window, int width, int height) {
@@ -51,6 +44,11 @@ namespace Glint {
     }
 
     void runWallpaperWindow(WindowContext& windowContext) {
+        MonitorDimensions monitorDimensions = getMonitorDimensions();
+        WorkerWs workers = getWorkerwWindow();
+        SetParent(windowContext.handle, workers.subW);
+        SetWindowPos(windowContext.handle, 0, 0, 0, monitorDimensions.width(), monitorDimensions.height(), 0);
+
         Mvk::createInstance(windowContext.mvkContext);
         Mvk::createSurface(windowContext.mvkContext, windowContext.window);
         Mvk::createDevice(windowContext.mvkContext);
@@ -84,6 +82,8 @@ namespace Glint {
         size_t frameCount { 0 };
 
         while (!glfwWindowShouldClose(windowContext.window) && !windowClosed) {
+            workers.focus = GetForegroundWindow();            
+
             double startTime = glfwGetTime();
             auto frameStartTime = std::chrono::steady_clock::now();
             auto nextFrameTime = frameStartTime;
@@ -109,7 +109,7 @@ namespace Glint {
 
             vkResetCommandBuffer(windowContext.mvkContext.commandBuffer[currentFrame], 0);
 
-            Mvk::recordCommandBufferWallpaper(windowContext.mvkContext, windowContext.mvkContext.commandBuffer[currentFrame], imageIndex, currentFrame);
+            Mvk::recordCommandBufferWallpaper(windowContext.mvkContext, windowContext.mvkContext.commandBuffer[currentFrame], imageIndex, currentFrame, workers);
 
             VkSemaphore waitSemaphores[] = {windowContext.mvkContext.imageAvailableSemaphore[currentFrame]};
             VkSemaphore signalSemaphores[] = {windowContext.mvkContext.renderFinishedSemaphore[currentFrame]};
@@ -161,6 +161,15 @@ namespace Glint {
     }
 
     void runSelectorWindow(WindowContext& windowContext) {
+        int width, height, nrChannels;
+        unsigned char* pixels = stbi_load(ASSETS_DIR "img/icon.png", &width, &height, &nrChannels, 4);
+        GLFWimage image[1];
+        image[0].width = width;
+        image[0].height = height;
+        image[0].pixels = pixels;
+        glfwSetWindowIcon(windowContext.window, 1, image);
+        stbi_image_free(pixels);
+
         Mvk::createInstance(windowContext.mvkContext);
         Mvk::createSurface(windowContext.mvkContext, windowContext.window);
         Mvk::createDevice(windowContext.mvkContext);
@@ -230,8 +239,15 @@ namespace Glint {
         LOG(fmt::color::brown, "            loop-started                \n");
         LOG(fmt::color::brown, "----------------------------------------\n");
 
+        auto startTime = glfwGetTime();
+
         while (!glfwWindowShouldClose(windowContext.window))
         {
+            auto currentTime = glfwGetTime();
+            double deltaTime = currentTime - startTime;
+            startTime = currentTime;
+            windowContext.mvkContext.deltaTime = deltaTime;
+
             glfwPollEvents();
             vkWaitForFences(windowContext.mvkContext.device, 1, &windowContext.mvkContext.inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -265,8 +281,7 @@ namespace Glint {
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores = signalSemaphores;
 
-            if (vkQueueSubmit(windowContext.mvkContext.graphicsQueue, 1, &submitInfo, windowContext.mvkContext.inFlightFence[currentFrame]) != VK_SUCCESS)
-            {
+            if (vkQueueSubmit(windowContext.mvkContext.graphicsQueue, 1, &submitInfo, windowContext.mvkContext.inFlightFence[currentFrame]) != VK_SUCCESS) {
                 THROW("failed to submit draw command buffer!\n");
             }
 
@@ -299,11 +314,6 @@ namespace Glint {
 
     void runWindow(WindowContext& windowContext) {
         if (windowContext.type == WINDOW_WALLPAPER_TYPE) {
-            // MonitorDimensions monitorDimensions = getMonitorDimensions();
-            // LOG(fmt::color::pink, "monitor-count: [count: {}]; monitor-dimensions: [width: {}][height: {}]\n", monitorDimensions.count, monitorDimensions.width(), monitorDimensions.height());
-            // HWND workerwHandle = getWorkerwWindow();
-            // SetParent(windowContext.handle, workerwHandle);
-            // SetWindowPos(windowContext.handle, HWND_TOP, 0, 0, monitorDimensions.width(), monitorDimensions.height(), SWP_SHOWWINDOW);
             runWallpaperWindow(windowContext);
         } else {
             runSelectorWindow(windowContext);

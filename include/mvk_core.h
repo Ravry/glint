@@ -66,6 +66,7 @@ struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection;
+    glm::vec3 tint;
 };
 
 static inline VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -263,7 +264,7 @@ namespace Mvk {
     void createCommandBuffer(Context &context);
 
     void recordCommandBufferSelector(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
-    void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame);
+    void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, WorkerWs& workerws);
 
     void createSyncObjects(Context& context);
 
