@@ -18,11 +18,6 @@ namespace MyImGUI {
 
     int size, w, h;
     ImVec2 windowSize;
-    
-    enum GLINT_THUMBNAIL_FILE_TYPE {
-        GLINT_THUMBNAIL_FILE_TYPE_IMAGE,
-        GLINT_THUMBNAIL_FILE_TYPE_VIDEO
-    };
 
     void SetupImGuiStyle() {
         ImGuiIO& io = ImGui::GetIO();
@@ -31,8 +26,8 @@ namespace MyImGUI {
         ImGuiStyle &style = ImGui::GetStyle();
         ImVec4 *colors = style.Colors;
 
-        style.WindowRounding = 5.0f;
-        style.FrameRounding = 0.0f;
+        style.WindowRounding = 0.f;
+        style.FrameRounding = 0.f;
         style.ScrollbarRounding = 5.0f;
         style.GrabRounding = 5.0f;
         style.TabRounding = 5.0f;
@@ -87,21 +82,57 @@ namespace MyImGUI {
         style.ScrollbarSize = 16.0f;
     }
 
-    void setupThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails, GLINT_THUMBNAIL_FILE_TYPE type)
-    {
+    void setupImageThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails) {
         std::vector<std::string> directoryContentUsable;
-
-        switch (type) {
-            case GLINT_THUMBNAIL_FILE_TYPE_IMAGE: {
-                
-                break;
-            }
-                
-            case GLINT_THUMBNAIL_FILE_TYPE_VIDEO: {
-                break;
+        {
+            std::vector<std::string> directoryContents = readDirectoryContent(filepath);
+            for (auto &directoryContent : directoryContents)
+            {
+                if (isImageFile(directoryContent))
+                {
+                    directoryContentUsable.push_back(directoryContent);
+                    LOG(fmt::color::light_steel_blue, "image-file ~ {}\n", directoryContent);
+                }
+                else
+                {
+                    LOG(fmt::color::dark_orange, "not-image-file ~ {}\n", directoryContent);
+                }
             }
         }
 
+        size_t directoryContentCount{directoryContentUsable.size()};
+
+        if (directoryContentCount == 0)
+            return;
+
+        context.imageDatas["media_image"].images.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageAllocations.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageViews.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageSamplers.resize(directoryContentCount);
+
+        for (size_t i{0}; i < directoryContentCount; i++)
+        {
+            uint8_t *data = getImageThumbnail(directoryContentUsable[i].c_str());
+            if (data)
+                Mvk::createTextureFromData(context, context.imageDatas["media_image"].images[i], context.imageDatas["media_image"].imageAllocations[i], context.imageDatas["media_image"].imageViews[i], context.imageDatas["media_image"].imageSamplers[i], data, 174, 97);
+        }
+
+        Mvk::createDescriptorPoolUtil(context, context.imageDatas["media_image"].imageDescriptorPool, directoryContentCount);
+
+        std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(context, context.descriptorSetLayout, context.imageDatas["media_image"].imageDescriptorPool, context.imageDatas["media_image"].imageViews, context.imageDatas["media_image"].imageSamplers);
+
+        size = descriptorSets.size();
+        thumbnails.resize(size);
+
+        for (size_t i{0}; i < size; i++)
+        {
+            thumbnails[i].first = directoryContentUsable[i];
+            thumbnails[i].second = (ImTextureID)descriptorSets[i];
+        }
+    }
+
+    void setupVideoThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails) {
+        std::vector<std::string> directoryContentUsable;
         {
             std::vector<std::string> directoryContents = readDirectoryContent(filepath);
             for (auto &directoryContent : directoryContents)
@@ -123,21 +154,21 @@ namespace MyImGUI {
         if (directoryContentCount == 0)
             return;
 
-        context.images.resize(directoryContentCount);
-        context.imageAllocations.resize(directoryContentCount);
-        context.imageViews.resize(directoryContentCount);
-        context.imageSamplers.resize(directoryContentCount);
+        context.imageDatas["media_video"].images.resize(directoryContentCount);
+        context.imageDatas["media_video"].imageAllocations.resize(directoryContentCount);
+        context.imageDatas["media_video"].imageViews.resize(directoryContentCount);
+        context.imageDatas["media_video"].imageSamplers.resize(directoryContentCount);
 
         for (size_t i{0}; i < directoryContentCount; i++) {
             uint8_t *data = getMediaThumbnail(directoryContentUsable[i].c_str());
             if (data)
-                Mvk::createTextureFromData(context, context.images[i], context.imageAllocations[i], context.imageViews[i], context.imageSamplers[i], data, 174, 97);
+                Mvk::createTextureFromData(context, context.imageDatas["media_video"].images[i], context.imageDatas["media_video"].imageAllocations[i], context.imageDatas["media_video"].imageViews[i], context.imageDatas["media_video"].imageSamplers[i], data, 174, 97);
         }
 
-        Mvk::createDescriptorPoolUtil(context, context.imageDescriptorPool, directoryContentCount);
+        Mvk::createDescriptorPoolUtil(context, context.imageDatas["media_video"].imageDescriptorPool, directoryContentCount);
 
-        std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(context, context.descriptorSetLayout, context.imageDescriptorPool, context.imageViews, context.imageSamplers);
-        
+        std::vector<VkDescriptorSet> descriptorSets = Mvk::allocateDescriptorSetsUtil(context, context.descriptorSetLayout, context.imageDatas["media_video"].imageDescriptorPool, context.imageDatas["media_video"].imageViews, context.imageDatas["media_video"].imageSamplers);
+
         size = descriptorSets.size();
         thumbnails.resize(size);
 
@@ -148,12 +179,29 @@ namespace MyImGUI {
         }
     }
 
+    void setupThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails, GLINT_THUMBNAIL_FILE_TYPE type)
+    {
+        switch (type) {
+            case GLINT_THUMBNAIL_FILE_TYPE_IMAGE: {
+                setupImageThumbnails(context, filepath, thumbnails);
+                break;
+            }
+            case GLINT_THUMBNAIL_FILE_TYPE_VIDEO: {
+                setupVideoThumbnails(context, filepath, thumbnails);
+                break;
+            }
+        }
+    }
+
     void handleUpdatePathQueue(Mvk::Context& context) {
-        if (imagesPathUpdateQueue.size() > 0) {
+        vkDeviceWaitIdle(context.device);
+
+        if (imagesPathUpdateQueue.size() > 0)
+        {
             selectedWallpaper = -1;
             size = 0;
             imageThumbnails.clear();
-            context.destroyImagesAndBelongings();
+            context.destroyImagesAndBelongings(context.imageDatas["media_image"]);
             strcpy(dirPathVideos, imagesPathUpdateQueue.front());
             imagesPathUpdateQueue.pop();
             setupThumbnails(context, dirPathVideos, imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
@@ -163,7 +211,7 @@ namespace MyImGUI {
             selectedWallpaper = -1;
             size = 0;
             videoThumbnails.clear();
-            context.destroyImagesAndBelongings();
+            context.destroyImagesAndBelongings(context.imageDatas["media_video"]);
             strcpy(dirPathVideos, videosPathUpdateQueue.front());
             videosPathUpdateQueue.pop();
             setupThumbnails(context, dirPathVideos, videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
@@ -300,7 +348,7 @@ namespace MyImGUI {
         }
     }
 
-    void renderThumbnailGrid(std::vector<std::pair<std::string, ImTextureID>>& thumbnails) {
+    void renderThumbnailGrid(std::vector<std::pair<std::string, ImTextureID>>& thumbnails, GLINT_THUMBNAIL_FILE_TYPE type) {
         ImVec2 imageSize(w, h);
         for (int i = 0; i < thumbnails.size(); ++i)
         {
@@ -309,7 +357,10 @@ namespace MyImGUI {
                 selectedWallpaper = i;
                 {
                     std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
-                    MyImGUI::sharedSettings.mediaFile.push(thumbnails[i].first);
+                    MyImGUI::sharedSettings.mediaFile.push(MyImGUI::MediaItem{
+                        .file = thumbnails[i].first,
+                        .type = type
+                    });
                 }
             }
 
@@ -345,13 +396,13 @@ namespace MyImGUI {
 
             if (ImGui::TreeNode("image")) {
                 renderBrowseDirectory(dirPathImages, sizeof(dirPathImages), imagesPathUpdateQueue);
-                renderThumbnailGrid(imageThumbnails);
+                renderThumbnailGrid(imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
                 ImGui::TreePop();
             }
 
             if (ImGui::TreeNode("video")) {
                 renderBrowseDirectory(dirPathVideos, sizeof(dirPathVideos), videosPathUpdateQueue);
-                renderThumbnailGrid(videoThumbnails);
+                renderThumbnailGrid(videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
                 ImGui::TreePop();
             }
             ImGui::Unindent(marginX);

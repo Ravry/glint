@@ -127,8 +127,9 @@ bool isVideoFile(const std::string &filepath)
 
 bool isImageFile(const std::string &filepath) {
     static const std::set<std::string> imageExts = {
-        ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".m4v"
-    };
+        ".jpg", ".jpeg", ".png", ".bmp", ".tga", ".psd",
+        ".gif", ".hdr", ".pic", ".ppm", ".pgm", ".qoi"}
+    ;
 
     std::string ext = std::filesystem::path(filepath).extension().string();
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);

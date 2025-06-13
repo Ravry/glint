@@ -15,10 +15,12 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include "stb_image_resize.h"
+
 #include "log.h"
 #include "imgui_self.h"
 
-inline AVFormatContext* fmtCtx {nullptr};
+inline AVFormatContext *fmtCtx{nullptr};
 inline int videoStreamIndex {-1};
 inline const AVCodec* codec {nullptr};
 inline AVBufferRef* hwDeviceCtx {nullptr};
@@ -28,6 +30,8 @@ inline bool windowClosed {false};
 
 struct FrameData {
     void* pixels {nullptr};
+    int width {1920};
+    int height {1080};
 };
 
 inline std::mutex frameDataMutex;
@@ -39,3 +43,4 @@ constexpr size_t MAX_QUEUE_SIZE = 20;
 void media_func(const char* filename);
 
 uint8_t* getMediaThumbnail(const char* filename);
+uint8_t* getImageThumbnail(const char* filename);

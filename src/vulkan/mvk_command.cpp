@@ -91,11 +91,10 @@ namespace Mvk {
 
                     if (onlyPlayFocused) {
                         if (workerWs.focus == workerWs.surW)
-                            updateTextureImageDataDynamic(context, frameData.pixels);
+                            updateTextureImageDataDynamic(context, frameData.pixels, frameData.width, frameData.height);
                     } else {
-                        updateTextureImageDataDynamic(context, frameData.pixels);
+                        updateTextureImageDataDynamic(context, frameData.pixels, frameData.width, frameData.height);
                     }
-                    // LOG(fmt::color::lime, "consumer received frame data (from producer) - size: {}\n", frameQueue.size());
                 }
             }
             if (frameQueue.size() < 5)

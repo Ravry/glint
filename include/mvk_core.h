@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 #include <optional>
 #include <algorithm>
 #include <fstream>
@@ -157,37 +158,41 @@ namespace Mvk {
         VkImageView textureImageView;
         VkSampler textureImageSampler;
 
-    
-        std::vector<VkImage> images;
-        std::vector<VmaAllocation> imageAllocations;
-        std::vector<VkImageView> imageViews;
-        std::vector<VkSampler> imageSamplers;    
-        VkDescriptorPool imageDescriptorPool;
+        struct ImageContainer
+        {
+            std::vector<VkImage> images;
+            std::vector<VmaAllocation> imageAllocations;
+            std::vector<VkImageView> imageViews;
+            std::vector<VkSampler> imageSamplers;
+            VkDescriptorPool imageDescriptorPool;
+        };
+
+        std::map<std::string, ImageContainer> imageDatas;
         
-        void destroyImagesAndBelongings() {
-            vkDeviceWaitIdle(device);
-            
-            for (auto &sampler : imageSamplers)
+        void destroyImagesAndBelongings(ImageContainer& container) {
+            for (auto &sampler : container.imageSamplers)
             {
                 vkDestroySampler(device, sampler, 0);
             }
-            imageSamplers.clear();
-            
-            for (auto& view : imageViews) {
+            container.imageSamplers.clear();
+
+            for (auto &view : container.imageViews)
+            {
                 vkDestroyImageView(device, view, 0);
             }
-            imageViews.clear();
-            
-            for (size_t i {0}; i < images.size(); i++) {
-                vmaDestroyImage(allocatorVMA, images[i], imageAllocations[i]);
-            }
-            images.clear();
-            imageAllocations.clear();
+            container.imageViews.clear();
 
-            if (imageDescriptorPool != VK_NULL_HANDLE)
+            for (size_t i{0}; i < container.images.size(); i++)
             {
-                vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
-                imageDescriptorPool = VK_NULL_HANDLE;
+                vmaDestroyImage(allocatorVMA, container.images[i], container.imageAllocations[i]);
+            }
+            container.images.clear();
+            container.imageAllocations.clear();
+
+            if (container.imageDescriptorPool != VK_NULL_HANDLE)
+            {
+                vkDestroyDescriptorPool(device, container.imageDescriptorPool, 0);
+                container.imageDescriptorPool = VK_NULL_HANDLE;
             }
         }
 
@@ -203,8 +208,9 @@ namespace Mvk {
             for (auto swapchainFramebuffer : swapchainFramebuffers) {
                 vkDestroyFramebuffer(device, swapchainFramebuffer, 0);
             }
-            
-            destroyImagesAndBelongings();
+
+            destroyImagesAndBelongings(imageDatas["media_video"]);
+            destroyImagesAndBelongings(imageDatas["media_image"]);
 
             vkDestroySampler(device, textureImageSampler, 0);
             
@@ -307,7 +313,7 @@ namespace Mvk {
     void createDescriptorPoolImGUI(Context& context);
 
     void createTextureImage(Context &context, const char *imageFile, VkImage &image, VmaAllocation &allocation, VkImageView &imageView, VkSampler &sampler);
-    void createTexture(Context& context, const int width, const int height); 
-    void updateTextureImageDataDynamic(Context& context, void*& pixelData);
+    void createTexture(Context& context, const int width, const int height);
+    void updateTextureImageDataDynamic(Context &context, void *&pixelData, const int width, const int height);
     void createTextureFromData(Context& context, VkImage& image, VmaAllocation& allocation, VkImageView& imageView, VkSampler& sampler, uint8_t* pixels, int width, int height);
 }

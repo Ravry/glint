@@ -15,15 +15,28 @@ namespace Mvk {
     class Context;
 }
 
+enum GLINT_THUMBNAIL_FILE_TYPE
+{
+    GLINT_THUMBNAIL_FILE_TYPE_IMAGE,
+    GLINT_THUMBNAIL_FILE_TYPE_VIDEO
+};
+
+
 namespace MyImGUI {
     inline std::mutex sharedSettingsMutex;
-    
+
+    struct MediaItem
+    {
+        std::string file;
+        GLINT_THUMBNAIL_FILE_TYPE type;
+    };
+
     struct SharedSettings
     {
         int fps { 20 };
         float tintColor[3] { 1.f, 1.f, 1.f };
         bool onlyPlayWhenFocused { false };
-        std::queue<std::string> mediaFile;
+        std::queue<MediaItem> mediaFile;
     };
 
     inline SharedSettings sharedSettings;

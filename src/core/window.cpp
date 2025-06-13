@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
 #define VMA_IMPLEMENTATION
 #include "window.h"
 #include "imgui_self.h"
