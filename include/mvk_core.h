@@ -21,8 +21,6 @@
 
 inline constexpr size_t N = 2;
 
-inline HWND desktop {GetShellWindow()};
-
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -173,16 +171,24 @@ namespace Mvk {
             {
                 vkDestroySampler(device, sampler, 0);
             }
+            imageSamplers.clear();
             
             for (auto& view : imageViews) {
                 vkDestroyImageView(device, view, 0);
             }
+            imageViews.clear();
             
             for (size_t i {0}; i < images.size(); i++) {
                 vmaDestroyImage(allocatorVMA, images[i], imageAllocations[i]);
             }
+            images.clear();
+            imageAllocations.clear();
 
-            vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
+            if (imageDescriptorPool != VK_NULL_HANDLE)
+            {
+                vkDestroyDescriptorPool(device, imageDescriptorPool, 0);
+                imageDescriptorPool = VK_NULL_HANDLE;
+            }
         }
 
         void destroy() {   

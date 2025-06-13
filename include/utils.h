@@ -9,6 +9,8 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <commdlg.h>
+#include <set>
+#include <algorithm>
 #include "imgui.h"
 #include "log.h"
 
@@ -23,6 +25,8 @@ WorkerWs getWorkerwWindow();
 std::string readFileContents(const char* filename);
 std::vector<std::string> readDirectoryContent(const char* directory);
 std::string OpenFolderDialog(HWND owner = nullptr);
+bool isVideoFile(const std::string &filepath);
+bool isImageFile(const std::string &filepath);
 
 struct MonitorDimensions {
     int left = INT_MAX;

@@ -11,18 +11,13 @@
 inline constexpr size_t WND_WIDTH = 800;
 inline constexpr size_t WND_HEIGHT = 600;
 
-namespace Mvk
-{
+namespace Mvk {
     class Context;
 }
 
 namespace MyImGUI {
-    inline std::queue<const char*> pathUpdateQueue;
-
-    void SetupImGuiStyle();
-    void initMyImGUI(Mvk::Context &context);
-    void handleUpdatePathQueue(Mvk::Context &context);
-
+    inline std::mutex sharedSettingsMutex;
+    
     struct SharedSettings
     {
         int fps { 20 };
@@ -31,8 +26,11 @@ namespace MyImGUI {
         std::queue<std::string> mediaFile;
     };
 
-    inline std::mutex sharedSettingsMutex;
     inline SharedSettings sharedSettings;
+
+    void SetupImGuiStyle();
+    void initMyImGUI(Mvk::Context &context);
+    void handleUpdatePathQueue(Mvk::Context &context);
 
     void renderWindow(Mvk::Context &context, double deltaTime, int width, int height);
 }

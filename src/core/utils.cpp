@@ -1,6 +1,5 @@
 #include "utils.h"
 
-// make sure to enable under performance settings -> visual effects -> animate controls and elements inside windows otherwise the wallpaper might not be placed behind the icons correctly
 WorkerWs getWorkerwWindow() {
     HWND progmanHWND = FindWindow("Progman", 0);
     SendMessageTimeout(progmanHWND, 0x052C, 0, 0, SMTO_NORMAL, 1000, 0);
@@ -114,8 +113,32 @@ std::string OpenFolderDialog(HWND owner)
     return folderPath;
 }
 
-MonitorDimensions getMonitorDimensions() {
-     MonitorDimensions monitorDimensions;
+bool isVideoFile(const std::string &filepath)
+{
+    static const std::set<std::string> videoExts = {
+        ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".m4v"
+    };
+
+    std::string ext = std::filesystem::path(filepath).extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    return videoExts.find(ext) != videoExts.end();
+}
+
+bool isImageFile(const std::string &filepath) {
+    static const std::set<std::string> imageExts = {
+        ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".m4v"
+    };
+
+    std::string ext = std::filesystem::path(filepath).extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    return imageExts.find(ext) != imageExts.end();
+}
+
+MonitorDimensions getMonitorDimensions()
+{
+    MonitorDimensions monitorDimensions;
 
     EnumDisplayMonitors(NULL, NULL, [](HMONITOR hMonitor, HDC, LPRECT, LPARAM lParam) -> BOOL {
         MONITORINFOEX monitorInfo;

@@ -4,21 +4,30 @@ namespace MyImGUI {
     const float titleBarHeight { 30.0f };
     const float marginX { 10.f };
     const int numColumns { 4 };
+    
+    char dirPathImages[512] = ASSETS_DIR "img/";
+    char dirPathVideos[512] = ASSETS_DIR "videos/";
 
-    std::vector<std::pair<std::string, ImTextureID>> thumbnails;
+    std::queue<const char *> imagesPathUpdateQueue;
+    std::queue<const char *> videosPathUpdateQueue;
+
+    std::vector<std::pair<std::string, ImTextureID>> imageThumbnails;
+    std::vector<std::pair<std::string, ImTextureID>> videoThumbnails;
+
     int selectedWallpaper { -1 };
 
-    bool firstFrame { true };	
-    bool externalSettingsOpened { false };
-
-    float windowPaddingX, framePaddingX;
     int size, w, h;
-    
     ImVec2 windowSize;
-
-    char dirPath[512] = ASSETS_DIR "videos/";
+    
+    enum GLINT_THUMBNAIL_FILE_TYPE {
+        GLINT_THUMBNAIL_FILE_TYPE_IMAGE,
+        GLINT_THUMBNAIL_FILE_TYPE_VIDEO
+    };
 
     void SetupImGuiStyle() {
+        ImGuiIO& io = ImGui::GetIO();
+        io.FontDefault = io.Fonts->AddFontFromFileTTF(ASSETS_DIR "fonts/arial.ttf", 18.0f);
+
         ImGuiStyle &style = ImGui::GetStyle();
         ImVec4 *colors = style.Colors;
 
@@ -32,7 +41,6 @@ namespace MyImGUI {
         style.PopupBorderSize = 1.0f;
         style.PopupRounding = 5.0f;
 
-        // Setting the colors
         colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
         colors[ImGuiCol_TextDisabled] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
         colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
@@ -52,48 +60,47 @@ namespace MyImGUI {
         colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
         colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
 
-        // Accent colors changed to darker olive-green/grey shades
-        colors[ImGuiCol_CheckMark] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);        // Dark gray for check marks
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);       // Dark gray for sliders
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f); // Slightly lighter gray when active
-        colors[ImGuiCol_Button] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);     // Button background (dark gray)
-        colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);    // Button hover state
-        colors[ImGuiCol_ButtonActive] = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);     // Button active state
-        colors[ImGuiCol_Header] = ImVec4(0.0f, 0.0f, 0.0f, .9f);           // Dark gray for menu headers
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);    // Slightly lighter on hover
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);     // Lighter gray when active
-        colors[ImGuiCol_Separator] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);        // Separators in dark gray
+        colors[ImGuiCol_CheckMark] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
+        colors[ImGuiCol_SliderGrab] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
+        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+        colors[ImGuiCol_Button] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
+        colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+        colors[ImGuiCol_ButtonActive] = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
+        colors[ImGuiCol_Header] = ImVec4(0.0f, 0.0f, 0.0f, .9f);
+        colors[ImGuiCol_HeaderHovered] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
+        colors[ImGuiCol_HeaderActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+        colors[ImGuiCol_Separator] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
         colors[ImGuiCol_SeparatorHovered] = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
         colors[ImGuiCol_SeparatorActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        colors[ImGuiCol_ResizeGrip] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f); // Resize grips in dark gray
+        colors[ImGuiCol_ResizeGrip] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
         colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
         colors[ImGuiCol_ResizeGripActive] = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
-        colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);        // Tabs background
-        colors[ImGuiCol_TabHovered] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f); // Darker gray on hover
+        colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+        colors[ImGuiCol_TabHovered] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
         colors[ImGuiCol_TabActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
         colors[ImGuiCol_TabUnfocused] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
         colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        // Additional styles
+
         style.FramePadding = ImVec2(4.0f, 4.0f);
         style.ItemSpacing = ImVec2(4.0f, 4.0f);
         style.IndentSpacing = 20.0f;
         style.ScrollbarSize = 16.0f;
     }
 
-    bool isVideoFile(const std::string &filepath)
-    {
-        static const std::set<std::string> videoExts = {
-            ".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".m4v"};
-
-        std::string ext = std::filesystem::path(filepath).extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-        return videoExts.find(ext) != videoExts.end();
-    }
-
-    void setupThumbnails(Mvk::Context &context, const char* filepath)
+    void setupThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails, GLINT_THUMBNAIL_FILE_TYPE type)
     {
         std::vector<std::string> directoryContentUsable;
+
+        switch (type) {
+            case GLINT_THUMBNAIL_FILE_TYPE_IMAGE: {
+                
+                break;
+            }
+                
+            case GLINT_THUMBNAIL_FILE_TYPE_VIDEO: {
+                break;
+            }
+        }
 
         {
             std::vector<std::string> directoryContents = readDirectoryContent(filepath);
@@ -139,37 +146,48 @@ namespace MyImGUI {
             thumbnails[i].first = directoryContentUsable[i];
             thumbnails[i].second = (ImTextureID)descriptorSets[i];
         }
-    
     }
 
     void handleUpdatePathQueue(Mvk::Context& context) {
-        if (pathUpdateQueue.size() == 0)
-            return;
+        if (imagesPathUpdateQueue.size() > 0) {
+            selectedWallpaper = -1;
+            size = 0;
+            imageThumbnails.clear();
+            context.destroyImagesAndBelongings();
+            strcpy(dirPathVideos, imagesPathUpdateQueue.front());
+            imagesPathUpdateQueue.pop();
+            setupThumbnails(context, dirPathVideos, imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
+        }
 
-        selectedWallpaper = -1;
-        size = 0;
-        thumbnails.clear();
-        context.destroyImagesAndBelongings();
-        strcpy(dirPath, pathUpdateQueue.front());
-        pathUpdateQueue.pop();
-        setupThumbnails(context, dirPath);
+        if (videosPathUpdateQueue.size() > 0) {
+            selectedWallpaper = -1;
+            size = 0;
+            videoThumbnails.clear();
+            context.destroyImagesAndBelongings();
+            strcpy(dirPathVideos, videosPathUpdateQueue.front());
+            videosPathUpdateQueue.pop();
+            setupThumbnails(context, dirPathVideos, videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
+        }
     }
 
     void initMyImGUI(Mvk::Context &context)
     {
         ImGuiStyle& style = ImGui::GetStyle();
-        
+
+        float windowPaddingX, framePaddingX;
+
         windowPaddingX = style.WindowPadding.x;
         style.WindowPadding.x = 0;
         style.WindowPadding.y = 0;
         framePaddingX = style.FramePadding.x;
 
-        w = (WND_WIDTH - (10 * 3) - (marginX * numColumns) - (framePaddingX * numColumns * 2)) / numColumns;
+        w = (WND_WIDTH - (10 * 3) - (marginX * (numColumns + 2)) - (framePaddingX * numColumns * 2)) / numColumns;
         h = w * (9./16.);
         
         LOG(fmt::color::peru, "thumbnail - [width|{}] [height|{}]\n", w, h);
 
-        setupThumbnails(context, dirPath);
+        setupThumbnails(context, dirPathImages, imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
+        setupThumbnails(context, dirPathVideos, videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
     }
 
     void renderCustomTitlebar(GLFWwindow* window) {
@@ -239,6 +257,8 @@ namespace MyImGUI {
     }
 
     void renderSettingsHeader() {
+        static bool externalSettingsOpened{false};
+
         if(ImGui::CollapsingHeader("settings")) {
             ImGui::Indent(marginX);
             ImGui::Text("Under maintenance...\nIn case you want to contribute feel free to do so via https://github.com/Ravry/glint");
@@ -248,7 +268,7 @@ namespace MyImGUI {
             ImGui::Text("active wallpaper:");
             ImGui::SameLine();
             if (selectedWallpaper >= 0) {
-                if (ImGui::ImageButton("active_thumb", thumbnails[selectedWallpaper].second, ImVec2(240, 135)))
+                if (ImGui::ImageButton("active_thumb", videoThumbnails[selectedWallpaper].second, ImVec2(240, 135)))
                 {
                     externalSettingsOpened = true;
                 }
@@ -280,11 +300,12 @@ namespace MyImGUI {
         }
     }
 
-    void renderThumbnailGrid() {
+    void renderThumbnailGrid(std::vector<std::pair<std::string, ImTextureID>>& thumbnails) {
         ImVec2 imageSize(w, h);
-        for (int i = 0; i < size; ++i)
+        for (int i = 0; i < thumbnails.size(); ++i)
         {
-            if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i].second, imageSize)) {
+            if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i].second, imageSize))
+            {
                 selectedWallpaper = i;
                 {
                     std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
@@ -292,30 +313,47 @@ namespace MyImGUI {
                 }
             }
 
-            if ((i + 1) % numColumns != 0 && i != (size - 1))
+            if ((i + 1) % numColumns != 0 && i != (thumbnails.size() - 1))
                 ImGui::SameLine(0, marginX);
+        }
+    }
+
+    void renderBrowseDirectory(char* directory, size_t directory_size, std::queue<const char*>& addQueue) {
+        if (ImGui::Button("Browse"))
+        {
+            std::string selectedPath = OpenFolderDialog();
+            if (!selectedPath.empty())
+            {
+                strncpy(directory, selectedPath.c_str(), directory_size);
+                directory[directory_size - 1] = '\0';
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::InputText("Directory Path", directory, directory_size))
+        {
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Apply"))
+        {
+            addQueue.push(directory);
         }
     }
 
     void renderMediaHeader(Mvk::Context &context) {
         if(ImGui::CollapsingHeader("media", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent(marginX);
-            if (ImGui::Button("Browse")) {
-                std::string selectedPath = OpenFolderDialog();
-                if (!selectedPath.empty()) {
-                    strncpy(dirPath, selectedPath.c_str(), sizeof(dirPath));
-                    dirPath[sizeof(dirPath) - 1] = '\0';
-                }
-            }
-            ImGui::SameLine();
-            if (ImGui::InputText("Directory Path", dirPath, sizeof(dirPath))) {
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Apply")) {
-                pathUpdateQueue.push(dirPath);
+
+            if (ImGui::TreeNode("image")) {
+                renderBrowseDirectory(dirPathImages, sizeof(dirPathImages), imagesPathUpdateQueue);
+                renderThumbnailGrid(imageThumbnails);
+                ImGui::TreePop();
             }
 
-            renderThumbnailGrid();
+            if (ImGui::TreeNode("video")) {
+                renderBrowseDirectory(dirPathVideos, sizeof(dirPathVideos), videosPathUpdateQueue);
+                renderThumbnailGrid(videoThumbnails);
+                ImGui::TreePop();
+            }
             ImGui::Unindent(marginX);
         }
     }
@@ -329,10 +367,10 @@ namespace MyImGUI {
         }   
     }
 
-    double fpsTimer { 0 };
-    int fps { 0 };
-
     void renderFooter(double deltaTime) {
+        static double fpsTimer{0};
+        static int fps{0};
+
         fpsTimer += deltaTime;
         if (fpsTimer >= 1.) {
             fps = static_cast<int>(1. / deltaTime);
@@ -340,7 +378,7 @@ namespace MyImGUI {
         }
         
         ImGui::Spacing();
-        std::string strFPS = "FPS: " + std::to_string(fps) + " ~ CC0 No Rights Reserved (https://creativecommons.org/public-domain/cc0/)";
+        std::string strFPS = "make sure to enable:\nenvironment variables->performance->visual effects->[X] animate controls and elements inside windows\n\notherwise the wallpaper might not be placed behind the icons correctly\nFPS: " + std::to_string(fps) + " ~ CC0 No Rights Reserved (https://creativecommons.org/public-domain/cc0/)";
         ImGui::Indent(marginX);
         ImGui::Text(strFPS.c_str()); 
         ImGui::Unindent(marginX);   
@@ -362,6 +400,7 @@ namespace MyImGUI {
 
     void renderWindow(Mvk::Context &context, double deltaTime, int width, int height)
     {
+        static bool firstFrame{true};
         if (firstFrame) {
             ImGui::SetNextWindowPos(ImVec2(0, 0));
             ImGui::SetNextWindowSize(ImVec2(width, height));
