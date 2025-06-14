@@ -14,7 +14,12 @@ namespace MyImGUI {
     std::vector<std::pair<std::string, ImTextureID>> imageThumbnails;
     std::vector<std::pair<std::string, ImTextureID>> videoThumbnails;
 
-    int selectedWallpaper { -1 };
+    struct Selection {
+        GLINT_THUMBNAIL_FILE_TYPE type { GLINT_THUMBNAIL_FILE_TYPE_VIDEO };
+        int selected { -1 };
+    };
+
+    Selection selection;
 
     int size, w, h;
     ImVec2 windowSize;
@@ -198,7 +203,7 @@ namespace MyImGUI {
 
         if (imagesPathUpdateQueue.size() > 0)
         {
-            selectedWallpaper = -1;
+            selection.selected = -1;
             size = 0;
             imageThumbnails.clear();
             context.destroyImagesAndBelongings(context.imageDatas["media_image"]);
@@ -208,7 +213,7 @@ namespace MyImGUI {
         }
 
         if (videosPathUpdateQueue.size() > 0) {
-            selectedWallpaper = -1;
+            selection.selected = -1;
             size = 0;
             videoThumbnails.clear();
             context.destroyImagesAndBelongings(context.imageDatas["media_video"]);
@@ -315,11 +320,20 @@ namespace MyImGUI {
 
             ImGui::Text("active wallpaper:");
             ImGui::SameLine();
-            if (selectedWallpaper >= 0) {
-                if (ImGui::ImageButton("active_thumb", videoThumbnails[selectedWallpaper].second, ImVec2(240, 135)))
-                {
-                    externalSettingsOpened = true;
+            if (selection.selected >= 0) {
+                bool settingsButtonPressed { false };
+                switch (selection.type) {
+                    case GLINT_THUMBNAIL_FILE_TYPE_IMAGE: {
+                        settingsButtonPressed = ImGui::ImageButton("active_thumb", imageThumbnails[selection.selected].second, ImVec2(240, 135));
+                        break;
+                    }
+                    case GLINT_THUMBNAIL_FILE_TYPE_VIDEO: {
+                        settingsButtonPressed = ImGui::ImageButton("active_thumb", videoThumbnails[selection.selected].second, ImVec2(240, 135));
+                        break;
+                    } 
                 }
+
+                if (settingsButtonPressed) externalSettingsOpened = true;
 
                 if (externalSettingsOpened) {
                     ImGui::Begin("Wallpaper Settings", &externalSettingsOpened);
@@ -337,11 +351,12 @@ namespace MyImGUI {
                     ImGui::Unindent(marginX * 2);
                     ImGui::End();
                 }
-            } else {
+            }
+            else
+            {
                 ImGui::Text("none");
             }
 
-            
             ImGui::Separator();
 
             ImGui::Unindent(marginX);
@@ -354,7 +369,11 @@ namespace MyImGUI {
         {
             if (ImGui::ImageButton(("##thumb" + std::to_string(i)).c_str(), thumbnails[i].second, imageSize))
             {
-                selectedWallpaper = i;
+                selection = Selection {
+                    .type = type,
+                    .selected = i 
+                };
+
                 {
                     std::lock_guard<std::mutex> lock(MyImGUI::sharedSettingsMutex);
                     MyImGUI::sharedSettings.mediaFile.push(MyImGUI::MediaItem{
@@ -394,13 +413,13 @@ namespace MyImGUI {
         if(ImGui::CollapsingHeader("media", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Indent(marginX);
 
-            if (ImGui::TreeNode("image")) {
+            if (ImGui::TreeNodeEx("image", ImGuiTreeNodeFlags_DefaultOpen)) {
                 renderBrowseDirectory(dirPathImages, sizeof(dirPathImages), imagesPathUpdateQueue);
                 renderThumbnailGrid(imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
                 ImGui::TreePop();
             }
 
-            if (ImGui::TreeNode("video")) {
+            if (ImGui::TreeNodeEx("video", ImGuiTreeNodeFlags_DefaultOpen)) {
                 renderBrowseDirectory(dirPathVideos, sizeof(dirPathVideos), videosPathUpdateQueue);
                 renderThumbnailGrid(videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
                 ImGui::TreePop();

@@ -163,14 +163,8 @@ namespace Glint {
     }
 
     void runSelectorWindow(WindowContext& windowContext) {
-        LONG exStyle = GetWindowLong(windowContext.handle, GWL_EXSTYLE);
-        SetWindowLong(windowContext.handle, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-        BYTE alpha = 225;
-        COLORREF transparentColor = RGB(0, 0, 0);
-        SetLayeredWindowAttributes(windowContext.handle, transparentColor, alpha, LWA_ALPHA);
-
         int width, height, nrChannels;
-        unsigned char* pixels = stbi_load(ASSETS_DIR "img/icon.png", &width, &height, &nrChannels, 4);
+        unsigned char* pixels = stbi_load(ASSETS_DIR "icons/icon.png", &width, &height, &nrChannels, 4);
         GLFWimage image[1];
         image[0].width = width;
         image[0].height = height;
