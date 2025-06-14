@@ -150,16 +150,10 @@ namespace Glint {
             }
 
             std::this_thread::sleep_until(nextFrameTime);
-
-            // ++frameCount;
-            // timerTime += glfwGetTime() - startTime;
-            // if (timerTime >= 1.) {
-            //     LOG(fmt::color::aqua, "fps: {}\n", frameCount);
-            //     timerTime = 0;
-            //     frameCount = 0;
-            // }
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
+
+        ShowWindow(windowContext.handle, SW_HIDE);
     }
 
     void runSelectorWindow(WindowContext& windowContext) {
@@ -171,6 +165,8 @@ namespace Glint {
         image[0].pixels = pixels;
         glfwSetWindowIcon(windowContext.window, 1, image);
         stbi_image_free(pixels);
+
+        MyDiscord::initDiscordClient();
 
         Mvk::createInstance(windowContext.mvkContext);
         Mvk::createSurface(windowContext.mvkContext, windowContext.window);
@@ -233,6 +229,8 @@ namespace Glint {
             double deltaTime = currentTime - startTime;
             startTime = currentTime;
             windowContext.mvkContext.deltaTime = deltaTime;
+
+            MyDiscord::handleDiscordEvents();
 
             glfwPollEvents();
             vkWaitForFences(windowContext.mvkContext.device, 1, &windowContext.mvkContext.inFlightFence[currentFrame], VK_TRUE, UINT64_MAX);

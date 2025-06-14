@@ -10,6 +10,8 @@ A (more or less) high-performance animated wallpaper application built using mod
 - [GLFW](https://www.glfw.org/) – Window creation and input handling
 - [GLM](https://github.com/g-truc/glm) – Header-only C++ mathematics library for graphics software
 - [FFMPEG](https://ffmpeg.org/) – handling video, audio, and other multimedia files and streams
+- [Discord Social SDK](https://discord.com/developers/social-sdk) - integrating essential discord features into the application
+- [nlohmann/json](https://github.com/nlohmann/json) - read and write to json files in cpp
 
 ## 🚧 Status
 

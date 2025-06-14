@@ -3,6 +3,7 @@
 #include <chrono>
 #include "mvk_core.h"
 #include "utils.h"
+#include "discord_self.h"
 
 namespace Glint {
     enum WindowType {
