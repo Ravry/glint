@@ -212,6 +212,16 @@ namespace Glint {
             MyImGUI::SetupImGuiStyle();
             ImGui_ImplVulkan_CreateFontsTexture();
 
+            ensureSettingsFileExists();
+            json settings;
+            openSettingsFile(settings);
+            std::string imageDir = getSettingValue<std::string>(settings, SETTINGS_ITEM_IMAGES_DIR);
+            strncpy(MyImGUI::dirPathImages, imageDir.c_str(), 512-1);
+            MyImGUI::dirPathImages[512 - 1] = '\0';
+            std::string videoDir = getSettingValue<std::string>(settings, SETTINGS_ITEM_VIDEOS_DIR);
+            strncpy(MyImGUI::dirPathVideos, videoDir.c_str(), 512-1);
+            MyImGUI::dirPathVideos[512 - 1] = '\0';
+
             MyImGUI::initMyImGUI(windowContext.mvkContext);
         }
 
@@ -296,6 +306,12 @@ namespace Glint {
         }
 
         windowClosed = true;
+    
+        json settings;
+        openSettingsFile(settings);
+        setSettingValue<std::string>(settings, SETTINGS_ITEM_IMAGES_DIR, std::string(MyImGUI::dirPathImages));
+        setSettingValue<std::string>(settings, SETTINGS_ITEM_VIDEOS_DIR, std::string(MyImGUI::dirPathVideos));
+        saveSettings(settings);
     }
 
     void runWindow(WindowContext& windowContext) {

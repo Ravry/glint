@@ -51,9 +51,7 @@ std::vector<std::string> readDirectoryContent(const char *directory) {
                 content.push_back(entry.path().string());
             }
         }
-    } catch (const std::filesystem::filesystem_error& e) {
-        THROW("filesystem error!");
-    }
+    } catch (const std::filesystem::filesystem_error& e) {}
     return content;
 }
 

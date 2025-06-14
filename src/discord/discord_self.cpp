@@ -3,66 +3,32 @@
 
 namespace MyDiscord {
     const uint64_t APPLICATION_ID { 1383446147120631899 };
-    const char* SETTINGS_FILE { ASSETS_DIR "settings/settings.json" };
-    const char* SETTINGS_ITEM_DISCORD_TOKEN { "discord_token" };
-    const char* SETTINGS_ITEM_DISCORD_REFRESH_TOKEN { "discord_refresh_token" };
-    const char* SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED { "discord_token_expired" };
-
-    void ensureSettingsFileExists() {
-        if (!std::filesystem::exists(SETTINGS_FILE)) {
-            std::filesystem::create_directories(ASSETS_DIR "settings/");
-            
-            nlohmann::json settingsJSON;
-            settingsJSON[SETTINGS_ITEM_DISCORD_TOKEN] = "";
-            settingsJSON[SETTINGS_ITEM_DISCORD_REFRESH_TOKEN] = "";
-            settingsJSON[SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED] = 0;
-            
-            std::ofstream output(SETTINGS_FILE);
-            if (output.is_open()) {
-                output << settingsJSON.dump(4);
-                output.close();
-            }
-        }
-    }
-
-    struct TokenInformation {
-        std::string token;
-        std::string refreshToken;
-        time_t expired;
-    };
+    const char* ACTIVITY_DESCRIPTION { "Browsing beautiful wallpapers" };
 
     TokenInformation getOAuthToken() {
-        ensureSettingsFileExists();
+        Glint::ensureSettingsFileExists();
 
-        std::ifstream file(SETTINGS_FILE);
-        nlohmann::json settingsJSON;
-        file >> settingsJSON;
+        json settings;
+        Glint::openSettingsFile(settings);
         return TokenInformation {
-            .token = settingsJSON[SETTINGS_ITEM_DISCORD_TOKEN],
-            .refreshToken = settingsJSON[SETTINGS_ITEM_DISCORD_REFRESH_TOKEN],
-            .expired = settingsJSON[SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED]
+            .token = Glint::getSettingValue<std::string>(settings, Glint::SETTINGS_ITEM_DISCORD_TOKEN),
+            .refreshToken = Glint::getSettingValue<std::string>(settings, Glint::SETTINGS_ITEM_DISCORD_REFRESH_TOKEN),
+            .expired = Glint::getSettingValue<time_t>(settings, Glint::SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED)
         };
     }
 
     void saveOAuthToken(std::string& token, std::string& refreshToken, int32_t expiresIn) {
-        std::ifstream input(SETTINGS_FILE);
-        nlohmann::json settingsContentJSON;
-        
-        if (input.is_open()) {
-            input >> settingsContentJSON;
-            input.close();
-        }
+        json settings;
+        Glint::openSettingsFile(settings);
         
         constexpr time_t SEVEN_DAYS_IN_SECONDS = 7 * 24 * 60 * 60;
         time_t tokenExpiredTime = time(nullptr) + SEVEN_DAYS_IN_SECONDS;
 
-        settingsContentJSON[SETTINGS_ITEM_DISCORD_TOKEN] = token;
-        settingsContentJSON[SETTINGS_ITEM_DISCORD_REFRESH_TOKEN] = refreshToken;
-        settingsContentJSON[SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED] = tokenExpiredTime;
+        Glint::setSettingValue<std::string>(settings, Glint::SETTINGS_ITEM_DISCORD_TOKEN, token);
+        Glint::setSettingValue<std::string>(settings, Glint::SETTINGS_ITEM_DISCORD_REFRESH_TOKEN, refreshToken);
+        Glint::setSettingValue<time_t>(settings, Glint::SETTINGS_ITEM_DISCORD_TOKEN_EXPIRED, tokenExpiredTime);
         
-        std::ofstream output(SETTINGS_FILE);
-        output << settingsContentJSON.dump(4);
-        output.close();    
+        Glint::saveSettings(settings);    
     }
 
     void oAuthDiscordClient(discordpp::Client* client) {
@@ -95,7 +61,7 @@ namespace MyDiscord {
             if (status == discordpp::Client::Status::Ready) {
                 discordpp::Activity activity;
                 activity.SetType(discordpp::ActivityTypes::Playing);
-                activity.SetState("Browsing beautiful wallpapers");
+                activity.SetState(ACTIVITY_DESCRIPTION);
 
                 client->UpdateRichPresence(activity, [](discordpp::ClientResult result) {
                     if(result.Successful()) {}

@@ -1,6 +1,15 @@
-# Vulkan Wallpaper App (WIP)
+# Glint
 
-A (more or less) high-performance animated wallpaper application built using modern graphics libraries. This project leverages the Vulkan SDK for rendering, GLFW for window management, GLM for mathematics, and `fmt` for logging. **Currently under active development.**
+<p style="display: flex; align-items: center;">
+  <img src="assets/icons/icon.png" alt="App Icon" style="width: 100px; height: auto; margin-right: 10px;" />
+  <span>
+    A (more or less) high-performance animated wallpaper application built using modern graphics libraries. 
+    This project leverages the Vulkan SDK for rendering, GLFW for window management, GLM for mathematics, and 
+    <code>fmt</code> for logging. <strong>Currently under active development.</strong>
+  </span>
+</p>
+
+
 
 ## 🛠️ Technologies Used
 

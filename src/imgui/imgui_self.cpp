@@ -4,9 +4,6 @@ namespace MyImGUI {
     const float titleBarHeight { 30.0f };
     const float marginX { 10.f };
     const int numColumns { 4 };
-    
-    char dirPathImages[512] = ASSETS_DIR "img/";
-    char dirPathVideos[512] = ASSETS_DIR "videos/";
 
     std::queue<const char *> imagesPathUpdateQueue;
     std::queue<const char *> videosPathUpdateQueue;
@@ -31,60 +28,87 @@ namespace MyImGUI {
         ImGuiStyle &style = ImGui::GetStyle();
         ImVec4 *colors = style.Colors;
 
-        style.WindowRounding = 0.f;
-        style.FrameRounding = 0.f;
-        style.ScrollbarRounding = 5.0f;
-        style.GrabRounding = 5.0f;
-        style.TabRounding = 5.0f;
-        style.WindowBorderSize = 1.0f;
-        style.FrameBorderSize = .0f;
-        style.PopupBorderSize = 1.0f;
-        style.PopupRounding = 5.0f;
+        style.WindowRounding    = 0.0f;
+        style.FrameRounding     = 0.0f;
+        style.GrabRounding      = 5.0f;
+        style.TabRounding       = 5.0f;
+        style.ScrollbarRounding = 0.0f;
+        style.WindowBorderSize  = 1.0f;
+        style.FrameBorderSize   = 0.0f;
+        style.PopupBorderSize   = 1.0f;
+        style.PopupRounding     = 0.0f;
+        style.FramePadding      = ImVec2(4.0f, 4.0f);
+        style.ItemSpacing       = ImVec2(4.0f, 4.0f);
+        style.IndentSpacing     = 10.0f;
+        style.ScrollbarSize     = 20.0f;
 
-        colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
-        colors[ImGuiCol_TextDisabled] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
-        colors[ImGuiCol_WindowBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        colors[ImGuiCol_ChildBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        colors[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.18f, 0.18f, 1.f);
-        colors[ImGuiCol_Border] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-        colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        colors[ImGuiCol_FrameBg] = ImVec4(0.01f, 0.01f, 0.01f, 1.00f);
-        colors[ImGuiCol_FrameBgHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-        colors[ImGuiCol_FrameBgActive] = ImVec4(0.01f, 0.01f, 0.01f, 1.00f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
-        colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
-        colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
-        colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+        colors[ImGuiCol_Text]                 = ImVec4(0.98f, 0.92f, 1.00f, 1.00f); // Soft white-lavender
+        colors[ImGuiCol_TextDisabled]         = ImVec4(0.50f, 0.40f, 0.60f, 1.00f); // Muted lavender
 
-        colors[ImGuiCol_CheckMark] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
-        colors[ImGuiCol_SliderGrab] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
-        colors[ImGuiCol_SliderGrabActive] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-        colors[ImGuiCol_Button] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
-        colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-        colors[ImGuiCol_ButtonActive] = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
-        colors[ImGuiCol_Header] = ImVec4(0.0f, 0.0f, 0.0f, .9f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
-        colors[ImGuiCol_Separator] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-        colors[ImGuiCol_SeparatorHovered] = ImVec4(0.35f, 0.35f, 0.35f, 1.00f);
-        colors[ImGuiCol_SeparatorActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        colors[ImGuiCol_ResizeGrip] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
-        colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-        colors[ImGuiCol_ResizeGripActive] = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
-        colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
-        colors[ImGuiCol_TabHovered] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        colors[ImGuiCol_TabActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        colors[ImGuiCol_TabUnfocused] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+        // Dark canvas background
+        colors[ImGuiCol_WindowBg]             = ImVec4(0.08f, 0.05f, 0.10f, 1.00f); 
+        colors[ImGuiCol_ChildBg]              = ImVec4(0.10f, 0.05f, 0.12f, 1.00f);
+        colors[ImGuiCol_PopupBg]              = ImVec4(0.12f, 0.08f, 0.16f, 0.94f);
 
-        style.FramePadding = ImVec2(4.0f, 4.0f);
-        style.ItemSpacing = ImVec2(4.0f, 4.0f);
-        style.IndentSpacing = 20.0f;
-        style.ScrollbarSize = 16.0f;
+        // Borders
+        colors[ImGuiCol_Border]               = ImVec4(0.50f, 0.30f, 0.55f, 0.60f);
+        colors[ImGuiCol_BorderShadow]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+
+        // Frames with a pink-violet palette
+        colors[ImGuiCol_FrameBg]              = ImVec4(0.22f, 0.10f, 0.26f, 1.00f);
+        colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.72f, 0.20f, 0.58f, 1.00f);
+        colors[ImGuiCol_FrameBgActive]        = ImVec4(0.85f, 0.22f, 0.55f, 1.00f);
+
+        // Title bar
+        colors[ImGuiCol_TitleBg]              = ImVec4(0.18f, 0.08f, 0.22f, 1.00f);
+        colors[ImGuiCol_TitleBgActive]        = ImVec4(0.35f, 0.10f, 0.45f, 1.00f);
+        colors[ImGuiCol_TitleBgCollapsed]     = ImVec4(0.10f, 0.05f, 0.12f, 0.60f);
+
+        // Menus & scrollbars
+        colors[ImGuiCol_MenuBarBg]            = ImVec4(0.12f, 0.07f, 0.14f, 1.00f);
+        colors[ImGuiCol_ScrollbarBg]          = ImVec4(0.10f, 0.06f, 0.12f, 0.60f);
+        colors[ImGuiCol_ScrollbarGrab]        = ImVec4(0.50f, 0.20f, 0.50f, 1.00f);
+        colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.80f, 0.30f, 0.70f, 1.00f);
+        colors[ImGuiCol_ScrollbarGrabActive]  = ImVec4(1.00f, 0.40f, 0.80f, 1.00f);
+
+        // Checkmark and sliders
+        colors[ImGuiCol_CheckMark]            = ImVec4(1.00f, 0.50f, 0.90f, 1.00f);
+        colors[ImGuiCol_SliderGrab]           = ImVec4(0.80f, 0.30f, 0.75f, 1.00f);
+        colors[ImGuiCol_SliderGrabActive]     = ImVec4(1.00f, 0.45f, 0.85f, 1.00f);
+
+        // Buttons
+        colors[ImGuiCol_Button]               = ImVec4(0.30f, 0.00f, 0.30f, 0.75f);
+        colors[ImGuiCol_ButtonHovered]        = ImVec4(0.60f, 0.00f, 0.50f, 1.00f);
+        colors[ImGuiCol_ButtonActive]         = ImVec4(0.65f, 0.00f, 0.40f, 1.00f);
+
+        // Headers & Tabs
+        colors[ImGuiCol_Header]               = ImVec4(0.30f, 0.00f, 0.30f, 0.75f);
+        colors[ImGuiCol_HeaderHovered]        = ImVec4(0.60f, 0.00f, 0.50f, 1.00f);
+        colors[ImGuiCol_HeaderActive]         = ImVec4(0.65f, 0.00f, 0.40f, 1.00f);
+
+        colors[ImGuiCol_Tab]                  = ImVec4(0.30f, 0.10f, 0.35f, 1.00f);
+        colors[ImGuiCol_TabHovered]           = ImVec4(0.90f, 0.35f, 0.80f, 1.00f);
+        colors[ImGuiCol_TabActive]            = ImVec4(0.70f, 0.25f, 0.65f, 1.00f);
+        colors[ImGuiCol_TabUnfocused]         = ImVec4(0.25f, 0.08f, 0.30f, 1.00f);
+        colors[ImGuiCol_TabUnfocusedActive]   = ImVec4(0.45f, 0.15f, 0.50f, 1.00f);
+
+        // Separator & Resize Grip
+        colors[ImGuiCol_Separator]            = ImVec4(0.40f, 0.10f, 0.45f, 0.70f);
+        colors[ImGuiCol_SeparatorHovered]     = ImVec4(0.80f, 0.25f, 0.70f, 1.00f);
+        colors[ImGuiCol_SeparatorActive]      = ImVec4(1.00f, 0.35f, 0.85f, 1.00f);
+
+        colors[ImGuiCol_ResizeGrip]           = ImVec4(0.70f, 0.20f, 0.70f, 0.25f);
+        colors[ImGuiCol_ResizeGripHovered]    = ImVec4(0.90f, 0.30f, 0.80f, 0.67f);
+        colors[ImGuiCol_ResizeGripActive]     = ImVec4(1.00f, 0.40f, 0.90f, 0.95f);
+
+        // Plot Colors
+        colors[ImGuiCol_PlotLines]            = ImVec4(0.85f, 0.45f, 0.95f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]     = ImVec4(1.00f, 0.60f, 0.80f, 1.00f);
+        colors[ImGuiCol_PlotHistogram]        = ImVec4(0.95f, 0.70f, 0.90f, 1.00f);
+        colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.80f, 0.90f, 1.00f);
+
+        // Modal overlay
+        colors[ImGuiCol_ModalWindowDimBg]     = ImVec4(0.15f, 0.05f, 0.20f, 0.80f);
     }
 
     void setupImageThumbnails(Mvk::Context &context, const char *filepath, std::vector<std::pair<std::string, ImTextureID>> &thumbnails) {
@@ -107,20 +131,32 @@ namespace MyImGUI {
 
         size_t directoryContentCount{directoryContentUsable.size()};
 
-        if (directoryContentCount == 0)
-            return;
-
         context.imageDatas["media_image"].images.resize(directoryContentCount);
         context.imageDatas["media_image"].imageAllocations.resize(directoryContentCount);
         context.imageDatas["media_image"].imageViews.resize(directoryContentCount);
         context.imageDatas["media_image"].imageSamplers.resize(directoryContentCount);
 
+        if (directoryContentCount == 0)
+            return;
+
         for (size_t i{0}; i < directoryContentCount; i++)
         {
             uint8_t *data = getImageThumbnail(directoryContentUsable[i].c_str());
+
             if (data)
                 Mvk::createTextureFromData(context, context.imageDatas["media_image"].images[i], context.imageDatas["media_image"].imageAllocations[i], context.imageDatas["media_image"].imageViews[i], context.imageDatas["media_image"].imageSamplers[i], data, 174, 97);
+            else
+            {
+                i--;
+                directoryContentCount--;
+                continue;
+            }
         }
+
+        context.imageDatas["media_image"].images.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageAllocations.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageViews.resize(directoryContentCount);
+        context.imageDatas["media_image"].imageSamplers.resize(directoryContentCount);
 
         Mvk::createDescriptorPoolUtil(context, context.imageDatas["media_image"].imageDescriptorPool, directoryContentCount);
 
@@ -207,9 +243,9 @@ namespace MyImGUI {
             size = 0;
             imageThumbnails.clear();
             context.destroyImagesAndBelongings(context.imageDatas["media_image"]);
-            strcpy(dirPathVideos, imagesPathUpdateQueue.front());
+            strcpy(dirPathImages, imagesPathUpdateQueue.front());
             imagesPathUpdateQueue.pop();
-            setupThumbnails(context, dirPathVideos, imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
+            setupThumbnails(context, dirPathImages, imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
         }
 
         if (videosPathUpdateQueue.size() > 0) {
@@ -250,7 +286,7 @@ namespace MyImGUI {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         ImVec2 titleBarMin = windowPos;
         ImVec2 titleBarMax = ImVec2(windowPos.x + windowSize.x, windowPos.y + titleBarHeight);
-        drawList->AddRectFilled(titleBarMin, titleBarMax, IM_COL32(40, 40, 40, 255));
+        drawList->AddRectFilled(titleBarMin, titleBarMax, IM_COL32(0.08f * 255, 0.00f * 255, 0.12f * 255, 255));
 
         static bool dragging = false;
         static ImVec2 dragOffset;
@@ -284,21 +320,15 @@ namespace MyImGUI {
         
         
         ImGui::SetCursorPos(ImVec2(10, (titleBarHeight - ImGui::GetTextLineHeight()) * 0.5f));
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), PROJ_NAME);
+        ImGui::Text(PROJ_NAME);
 
         ImGui::SetCursorPos(ImVec2(windowSize.x - titleBarHeight, 0));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.08f, 0.00f, 0.12f, 1.00f));
 
-        if (ImGui::Button("X", ImVec2(titleBarHeight, titleBarHeight))) {
+        if (ImGui::Button("x", ImVec2(titleBarHeight, titleBarHeight))) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
         
-        ImGui::PopStyleColor(2);
-        
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.3f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.7f, 0.7f, 1.0f));
 
         ImGui::SetCursorPos(ImVec2(windowSize.x - titleBarHeight * 2, 0));
 
@@ -306,7 +336,7 @@ namespace MyImGUI {
             glfwIconifyWindow(window);
         }
 
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(1);
     }
 
     void renderSettingsHeader() {
@@ -336,7 +366,7 @@ namespace MyImGUI {
                 if (settingsButtonPressed) externalSettingsOpened = true;
 
                 if (externalSettingsOpened) {
-                    ImGui::Begin("Wallpaper Settings", &externalSettingsOpened);
+                    ImGui::Begin("settings", &externalSettingsOpened);
                     ImGui::Spacing();
                     ImGui::Indent(marginX);
                     ImGui::Text("general");
@@ -399,7 +429,7 @@ namespace MyImGUI {
             }
         }
         ImGui::SameLine();
-        if (ImGui::InputText("Directory Path", directory, directory_size))
+        if (ImGui::InputText("##directory_input", directory, directory_size))
         {
         }
         ImGui::SameLine();
@@ -414,13 +444,13 @@ namespace MyImGUI {
             ImGui::Indent(marginX);
 
             if (ImGui::TreeNodeEx("image", ImGuiTreeNodeFlags_DefaultOpen)) {
-                renderBrowseDirectory(dirPathImages, sizeof(dirPathImages), imagesPathUpdateQueue);
+                renderBrowseDirectory(dirPathImages, 512, imagesPathUpdateQueue);
                 renderThumbnailGrid(imageThumbnails, GLINT_THUMBNAIL_FILE_TYPE_IMAGE);
                 ImGui::TreePop();
             }
 
             if (ImGui::TreeNodeEx("video", ImGuiTreeNodeFlags_DefaultOpen)) {
-                renderBrowseDirectory(dirPathVideos, sizeof(dirPathVideos), videosPathUpdateQueue);
+                renderBrowseDirectory(dirPathVideos, 512, videosPathUpdateQueue);
                 renderThumbnailGrid(videoThumbnails, GLINT_THUMBNAIL_FILE_TYPE_VIDEO);
                 ImGui::TreePop();
             }

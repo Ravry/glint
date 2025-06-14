@@ -4,10 +4,16 @@
 #include <filesystem>
 #include <fstream>
 #include <ctime>
+#include "settings.h"
 #include "discordpp.h"
-#include "json.hpp"
 
 namespace MyDiscord {
+    struct TokenInformation {
+        std::string token;
+        std::string refreshToken;
+        time_t expired;
+    };
+
     void initDiscordClient();
     void handleDiscordEvents();
 }

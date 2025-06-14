@@ -4,6 +4,7 @@
 #include "mvk_core.h"
 #include "utils.h"
 #include "discord_self.h"
+#include "settings.h"
 
 namespace Glint {
     enum WindowType {

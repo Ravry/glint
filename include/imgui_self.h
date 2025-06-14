@@ -21,8 +21,10 @@ enum GLINT_THUMBNAIL_FILE_TYPE
     GLINT_THUMBNAIL_FILE_TYPE_VIDEO
 };
 
-
 namespace MyImGUI {
+    inline char* dirPathImages = new char[512];
+    inline char* dirPathVideos = new char[512];
+
     inline std::mutex sharedSettingsMutex;
 
     struct MediaItem
