@@ -25,8 +25,9 @@ namespace Mvk {
         }
     }
 
-    FrameData frameData{};
     void recordCommandBufferWallpaper(Context &context, VkCommandBuffer commandBuffer, uint32_t imageIndex, uint32_t currentFrame, WorkerWs &workerWs) {
+        static FrameData frameData{};
+
         const float hWidth = context.swapchainExtent.width / 2.f;
         const float hHeight = context.swapchainExtent.height / 2.f;
 
